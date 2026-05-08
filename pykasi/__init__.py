@@ -1,4 +1,4 @@
-"""Python client for Korea Astronomy and Space Science Institute OpenAPIs."""
+"""한국천문연구원 OpenAPI용 Python 클라이언트."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Small conversion helpers for KASI API parameters and responses."""
+"""KASI API 요청 파라미터와 응답 값을 변환하는 작은 helper."""
 
 from __future__ import annotations
 
@@ -130,7 +130,7 @@ def dn_yn_value(
 
 
 def sanitize_request_params(params: Mapping[str, Any]) -> dict[str, Any]:
-    """Return params safe to expose in model context."""
+    """모델 context에 노출해도 안전한 요청 파라미터를 반환합니다."""
 
     return {
         key: value

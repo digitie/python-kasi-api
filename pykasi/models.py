@@ -1,4 +1,4 @@
-"""Public Pydantic models returned by pykasi."""
+"""pykasi가 반환하는 public Pydantic 모델."""
 
 from __future__ import annotations
 
@@ -15,13 +15,13 @@ T = TypeVar("T")
 
 
 class KasiModel(BaseModel):
-    """Base class for immutable pykasi models."""
+    """불변 pykasi 모델의 기반 클래스."""
 
     model_config = ConfigDict(frozen=True)
 
 
 class KasiCallContext(KasiModel):
-    """Metadata describing the API call that produced a response."""
+    """응답을 만든 API 호출 metadata."""
 
     service_name: str | None = None
     endpoint: str | None = None
@@ -30,7 +30,7 @@ class KasiCallContext(KasiModel):
 
 
 class Page(KasiModel, Generic[T]):
-    """A normalized KASI page."""
+    """정규화된 KASI 페이지."""
 
     items: tuple[T, ...]
     page_no: int | None = None
@@ -70,7 +70,7 @@ class Page(KasiModel, Generic[T]):
 
 
 class SpecialDay(KasiModel):
-    """Special-day record such as a public holiday, anniversary, solar term, or sundry day."""
+    """공휴일, 기념일, 24절기, 잡절 같은 특일 record."""
 
     locdate: str | None
     seq: int | None
@@ -87,7 +87,7 @@ class SpecialDay(KasiModel):
 
 
 class LunarSolarDate(KasiModel):
-    """Lunar/solar calendar conversion record."""
+    """음양력 변환 record."""
 
     sol_year: str | None
     sol_month: str | None
@@ -116,7 +116,7 @@ class LunarSolarDate(KasiModel):
 
 
 class RiseSet(KasiModel):
-    """Sun/moon rise and set times for an area or coordinate."""
+    """지역 또는 좌표 기준의 해와 달 출몰시각."""
 
     locdate: str | None
     location: str | None
@@ -140,7 +140,7 @@ class RiseSet(KasiModel):
 
 
 class SolarAltitude(KasiModel):
-    """Solar altitude and azimuth information."""
+    """태양 고도와 방위각 정보."""
 
     locdate: str | None
     location: str | None
@@ -161,7 +161,7 @@ class SolarAltitude(KasiModel):
 
 
 class MoonPhase(KasiModel):
-    """Moon phase age for a solar date."""
+    """양력일 기준 월령 정보."""
 
     sol_year: str | None
     sol_month: str | None
@@ -171,7 +171,7 @@ class MoonPhase(KasiModel):
 
 
 class AstroEvent(KasiModel):
-    """Astronomical event record."""
+    """천문현상 record."""
 
     locdate: str | None
     seq: int | None
@@ -183,7 +183,7 @@ class AstroEvent(KasiModel):
 
 
 class WeekInfo(KasiModel):
-    """Sunday/weekday lookup record from SolcWeekInfoService_v2."""
+    """SolcWeekInfoService_v2의 일요일/요일 조회 record."""
 
     year: str | None
     month: str | None

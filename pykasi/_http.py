@@ -1,4 +1,4 @@
-"""HTTP and response-envelope handling for KASI data.go.kr APIs."""
+"""KASI data.go.kr API의 HTTP 호출과 응답 envelope 처리."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ class SessionLike(Protocol):
 
 
 def build_session(retries: int = 3) -> SessionLike:
-    """Build a requests session with conservative GET retries."""
+    """보수적인 GET retry 설정을 가진 requests session을 만듭니다."""
 
     session = requests.Session()
     session.headers.update(
@@ -63,7 +63,7 @@ def build_session(retries: int = 3) -> SessionLike:
 
 
 class KasiHttp:
-    """Low-level data.go.kr client for KASI services."""
+    """KASI 서비스를 호출하는 저수준 data.go.kr 클라이언트."""
 
     def __init__(
         self,

@@ -1,4 +1,4 @@
-"""High-level client for Korea Astronomy and Space Science Institute OpenAPIs."""
+"""한국천문연구원 OpenAPI용 고수준 클라이언트."""
 
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ T = TypeVar("T")
 
 
 class KasiClient:
-    """Client entrypoint for KASI public APIs on data.go.kr."""
+    """data.go.kr KASI 공공 API의 클라이언트 진입점."""
 
     def __init__(
         self,
@@ -125,7 +125,7 @@ class KasiClient:
         *,
         response_format: str | None = None,
     ) -> Mapping[str, Any]:
-        """Call a KASI operation and return the normalized response body."""
+        """KASI operation을 호출하고 정규화된 응답 body를 반환합니다."""
 
         return self._http.get(
             service_name,
@@ -144,7 +144,7 @@ class KasiClient:
         num_of_rows: int | None = 10,
         response_format: str | None = None,
     ) -> Page[RawRecord]:
-        """Call a service operation and return raw item mappings in a Page."""
+        """서비스 operation을 호출하고 원본 item mapping을 Page로 반환합니다."""
 
         request_params = dict(params or {})
         request_params.update(_page_params(page_no=page_no, num_of_rows=num_of_rows))
@@ -166,7 +166,7 @@ class KasiClient:
         max_items: int | None = None,
         **kwargs: Any,
     ) -> Iterator[Page[T]]:
-        """Iterate a page-returning client method using response pagination metadata."""
+        """응답 pagination metadata를 사용해 Page 반환 메서드를 순회합니다."""
 
         next_page = page_no
         yielded_pages = 0
