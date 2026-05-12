@@ -20,7 +20,7 @@ from .exceptions import (
 )
 
 DEFAULT_BASE_URL = "https://apis.data.go.kr/B090041/openapi/service"
-DEFAULT_USER_AGENT = "pykasi/0.1 (+https://github.com/digitie/pykasi)"
+DEFAULT_USER_AGENT = "python-kasi-api/0.1 (+https://github.com/digitie/python-kasi-api)"
 TRANSIENT_STATUSES = {429, 500, 502, 503, 504}
 
 

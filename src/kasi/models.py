@@ -1,4 +1,4 @@
-"""pykasi가 반환하는 public Pydantic 모델."""
+"""kasi가 반환하는 public Pydantic 모델."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ T = TypeVar("T")
 
 
 class KasiModel(BaseModel):
-    """불변 pykasi 모델의 기반 클래스."""
+    """불변 kasi 모델의 기반 클래스."""
 
     model_config = ConfigDict(frozen=True)
 

@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from pykasi import KasiClient
+from kasi import KasiClient
 
 from .conftest import load_tripmate_env
 

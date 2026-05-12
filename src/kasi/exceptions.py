@@ -1,4 +1,4 @@
-"""pykasi 예외 계층."""
+"""kasi 예외 계층."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from typing import Any
 
 
 class KasiError(Exception):
-    """모든 pykasi 예외의 기반 클래스."""
+    """모든 kasi 예외의 기반 클래스."""
 
     def __init__(
         self,

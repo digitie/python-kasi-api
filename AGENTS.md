@@ -2,7 +2,7 @@
 
 ## 역할
 
-이 문서는 `pykasi`에서 작업하는 에이전트를 위한 운영 가이드입니다. 작업 전에 빠르게 프로젝트 기준, 문서 위치, 반복 실수 방지 규칙을 확인하기 위한 문서입니다.
+이 문서는 `python-kasi-api`에서 작업하는 에이전트를 위한 운영 가이드입니다. 작업 전에 빠르게 프로젝트 기준, 문서 위치, 반복 실수 방지 규칙을 확인하기 위한 문서입니다.
 
 ## 지시 우선순위
 
@@ -16,7 +16,8 @@
 
 ## 프로젝트 기준
 
-- `pykasi`는 한국천문연구원(KASI) 공공데이터포털 OpenAPI용 비공식 Python 클라이언트입니다.
+- `python-kasi-api`는 한국천문연구원(KASI) 공공데이터포털 OpenAPI용 비공식 Python 클라이언트입니다.
+- Python import 패키지명은 `kasi`입니다.
 - 기본 서버는 `https://apis.data.go.kr/B090041/openapi/service`입니다.
 - 인증 파라미터는 기본적으로 `serviceKey`입니다. 문서나 게이트웨이가 다른 대소문자를 요구하면 `service_key_param`으로 조정합니다.
 - 기본 응답 형식은 `_type=json`이지만, XML 응답도 같은 `Page[T]` 형태로 정규화해야 합니다.
@@ -27,7 +28,7 @@
 ## 구현 방향
 
 - 책임이 얇은 wrapper나 단순 위임용 helper를 새로 만드는 일은 지양합니다. 필요한 동작은 기존 흐름에 직접 녹이고, 새 추상화는 중복 제거, 오류 차단, public API 안정화처럼 분명한 책임이 있을 때만 둡니다.
-- 검증된 다른 라이브러리의 구현 방식이 문제를 더 직접적으로 해결한다면, 최소수정 원칙에만 묶이지 말고 그 방향을 `pykasi` 코드에 바로 적용합니다.
+- 검증된 다른 라이브러리의 구현 방식이 문제를 더 직접적으로 해결한다면, 최소수정 원칙에만 묶이지 말고 그 방향을 `kasi` 코드에 바로 적용합니다.
 - 외부 라이브러리 구현을 참고하거나 반영할 때는 라이선스 호환성, 출처, public API 영향, 기존 테스트 기대값을 함께 확인합니다.
 
 ## 문서 구성
@@ -35,17 +36,17 @@
 - `README.md`: 사용자용 개요, 설치, 인증, 예제, live test 안내.
 - `AGENTS.md`: 작업 라우팅, 모듈 소유권, 반복 실수 방지 규칙.
 - `pyproject.toml`: 패키징, 의존성, lint, test, mypy 설정.
-- `pykasi/client.py`: 사용자용 `KasiClient`, endpoint namespace, `Page[T]` 조립.
-- `pykasi/_http.py`: HTTP 호출, retry, JSON/XML envelope 정규화, 오류 매핑.
-- `pykasi/_convert.py`: 요청 파라미터와 응답 필드 변환 helper.
-- `pykasi/models.py`: public Pydantic 응답 모델과 row parser.
-- `pykasi/exceptions.py`: 예외 계층.
+- `src/kasi/client.py`: 사용자용 `KasiClient`, endpoint namespace, `Page[T]` 조립.
+- `src/kasi/_http.py`: HTTP 호출, retry, JSON/XML envelope 정규화, 오류 매핑.
+- `src/kasi/_convert.py`: 요청 파라미터와 응답 필드 변환 helper.
+- `src/kasi/models.py`: public Pydantic 응답 모델과 row parser.
+- `src/kasi/exceptions.py`: 예외 계층.
 - `tests/`: 네트워크 없는 단위 테스트와 opt-in live test.
 
 ## 문서 작성 규칙
 
 - 프로젝트 문서는 한글로 작성합니다.
-- 문서에서 파일 위치를 언급할 때는 프로젝트 루트 기준 상대 경로만 씁니다. 예: `pykasi/client.py`, `tests/test_live.py`.
+- 문서에서 파일 위치를 언급할 때는 프로젝트 루트 기준 상대 경로만 씁니다. 예: `src/kasi/client.py`, `tests/test_live.py`.
 - 저장소 문서에 로컬 절대 경로를 남기지 않습니다.
 - Python 내부 문서, 즉 모듈·클래스·함수·메서드 docstring과 유지보수용 주석은 한글로 작성합니다.
 - 코드 식별자, API 파라미터 이름, endpoint 이름, 외부 오류 메시지처럼 원문 자체가 의미 있는 값은 그대로 둡니다.
@@ -74,7 +75,7 @@
 
 담당 파일:
 
-- `pykasi/client.py`
+- `src/kasi/client.py`
 - `tests/test_client.py`
 
 확인할 것:
@@ -88,7 +89,7 @@
 
 담당 파일:
 
-- `pykasi/_http.py`
+- `src/kasi/_http.py`
 - `tests/test_http.py`
 
 확인할 것:
@@ -102,8 +103,8 @@
 
 담당 파일:
 
-- `pykasi/models.py`
-- `pykasi/_convert.py`
+- `src/kasi/models.py`
+- `src/kasi/_convert.py`
 
 확인할 것:
 
@@ -130,10 +131,10 @@
 기본 검증:
 
 ```bash
-python -m compileall pykasi tests
+python -m compileall src/kasi tests
 python -m pytest
 python -m ruff check .
-python -m mypy pykasi
+python -m mypy src/kasi
 ```
 
 실제 API 검증:

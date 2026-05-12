@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import pykasi
+import kasi
 
 
 def test_public_imports() -> None:
-    exported = set(pykasi.__all__)
+    exported = set(kasi.__all__)
 
     assert "KasiClient" in exported
     assert "Page" in exported

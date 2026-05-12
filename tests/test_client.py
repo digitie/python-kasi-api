@@ -4,7 +4,7 @@ from datetime import date
 
 import pytest
 
-from pykasi import KasiClient, SpecialDay
+from kasi import KasiClient, SpecialDay
 
 from .conftest import FakeResponse, kasi_payload
 

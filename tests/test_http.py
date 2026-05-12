@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from pykasi._http import KasiHttp, kasi_request_params
-from pykasi.exceptions import KasiAuthError, KasiParseError, KasiRateLimitError
+from kasi._http import KasiHttp, kasi_request_params
+from kasi.exceptions import KasiAuthError, KasiParseError, KasiRateLimitError
 
 from .conftest import FakeResponse, FakeSession, kasi_payload
 

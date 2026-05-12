@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from pykasi import KasiClient
+from kasi import KasiClient
 
 
 class FakeResponse:

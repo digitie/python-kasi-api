@@ -1,6 +1,6 @@
-# pykasi
+# python-kasi-api
 
-`pykasi`는 공공데이터포털(data.go.kr)의 한국천문연구원 OpenAPI를 Python에서 쓰기 위한 비공식 클라이언트입니다.
+`python-kasi-api`는 공공데이터포털(data.go.kr)의 한국천문연구원 OpenAPI를 Python에서 쓰기 위한 비공식 클라이언트입니다. Python 코드에서는 `kasi` 이름으로 import합니다.
 
 인접한 `pykma`, `pykrtourapi`, `pyopinet`, `pykex` 프로젝트와 같은 형태를 따릅니다. 작은 `requests` transport, 타입화된 Pydantic 응답 모델, fake session 단위 테스트, opt-in live test를 기본 구조로 둡니다.
 
@@ -39,7 +39,7 @@ data.go.kr 활용승인은 API별로 분리되어 있습니다. 한 키가 일�
 ## 사용 예시
 
 ```python
-from pykasi import KasiClient
+from kasi import KasiClient
 
 client = KasiClient.from_env()
 
@@ -80,7 +80,8 @@ python -m pytest -m live -vv
 
 에이전트와 기여자는 `AGENTS.md`를 먼저 확인합니다.
 
-- 문서의 파일 위치 정보는 `pykasi/client.py`, `tests/test_live.py`처럼 프로젝트 기준 상대 경로로 씁니다.
+- 문서의 파일 위치 정보는 `src/kasi/client.py`, `tests/test_live.py`처럼 프로젝트 기준 상대 경로로 씁니다.
+- 소스 코드는 `src/kasi/` 아래에 둡니다.
 - Python 내부 문서와 유지보수용 주석은 한글로 작성합니다.
 - 이 Windows 환경에서 `rg`가 권한 문제로 실패하면 `Get-ChildItem -Recurse -File`과 `Select-String`으로 우회합니다.
 - PowerShell에서 한글 문서를 읽을 때는 `Get-Content -Raw -Encoding UTF8`처럼 인코딩을 명시합니다.
