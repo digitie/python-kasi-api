@@ -2,7 +2,7 @@
 
 `python-kasi-api`는 공공데이터포털(data.go.kr)의 한국천문연구원 OpenAPI를 Python에서 쓰기 위한 비공식 클라이언트입니다. Python 코드에서는 `kasi` 이름으로 import합니다.
 
-인접한 `pykma`, `pykrtourapi`, `pyopinet`, `pykex` 프로젝트와 같은 형태를 따릅니다. 작은 `requests` transport, 타입화된 Pydantic 응답 모델, fake session 단위 테스트, opt-in live test를 기본 구조로 둡니다.
+작은 `requests` transport, 타입화된 Pydantic 응답 모델, fake session 단위 테스트, opt-in live test를 기본 구조로 둡니다. 공통 한국 주소·위치 기반 타입은 `python-kraddr-base` 의존성을 기준으로 둡니다.
 
 ## 지원 API
 
@@ -32,7 +32,7 @@ data.go.kr decoding 서비스 키를 사용합니다.
 $env:KASI_SERVICE_KEY="your_decoding_key"
 ```
 
-`KasiClient.from_env()`는 `KASI_SERVICE_KEY`를 먼저 보고, 이어서 `TRIPMATE_DATA_GO_SERVICE_KEY`, `DATA_GO_SERVICE_KEY`, `DATAGOKR_SERVICE_KEY`를 확인합니다.
+`KasiClient.from_env()`는 `KASI_SERVICE_KEY`를 먼저 보고, 이어서 `DATA_GO_SERVICE_KEY`, `DATAGOKR_SERVICE_KEY`를 확인합니다.
 
 data.go.kr 활용승인은 API별로 분리되어 있습니다. 한 키가 일부 KASI 서비스는 호출하지만 다른 서비스에서 HTTP 403을 반환할 수 있습니다. 이 경우 해당 API를 data.go.kr에서 추가 활용신청하거나 이미 승인된 키를 사용해야 합니다. 클라이언트는 이 응답을 `KasiAuthError`로 매핑하며, 응답 context에는 인증키를 노출하지 않습니다.
 
@@ -72,9 +72,7 @@ $env:KASI_LIVE="1"
 python -m pytest -m live -vv
 ```
 
-테스트는 `KASI_SERVICE_KEY`를 먼저 사용하고, 없으면 TripMate의 `TRIPMATE_DATA_GO_SERVICE_KEY`를 확인합니다.
-
-인접 workspace의 TripMate 키로는 승인된 KASI 서비스인 특일, 음양력 변환, 출몰시각에 대해 live check를 수행했습니다.
+테스트는 `KASI_SERVICE_KEY`를 먼저 사용하고, 없으면 `DATA_GO_SERVICE_KEY`, `DATAGOKR_SERVICE_KEY`를 확인합니다.
 
 ## 문서와 작업 규칙
 

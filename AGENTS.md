@@ -23,7 +23,7 @@
 - 기본 응답 형식은 `_type=json`이지만, XML 응답도 같은 `Page[T]` 형태로 정규화해야 합니다.
 - 기본 테스트는 실제 네트워크를 호출하지 않습니다. 실제 API 검증은 `@pytest.mark.live`와 `KASI_LIVE=1`로 분리합니다.
 - Python 지원 기준은 3.10 이상입니다.
-- 런타임 의존성은 `requests`, `pydantic`입니다.
+- 런타임 의존성은 `requests`, `pydantic`, `python-kraddr-base`입니다.
 
 ## 구현 방향
 

@@ -27,6 +27,7 @@ classifiers = [
 ]
 dependencies = [
   "pydantic>=2.7",
+  "python-kraddr-base>=0.1.5",
   "requests>=2.31",
 ]
 

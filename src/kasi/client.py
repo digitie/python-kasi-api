@@ -44,7 +44,6 @@ from .models import (
 
 DEFAULT_ENV_NAMES = (
     "KASI_SERVICE_KEY",
-    "TRIPMATE_DATA_GO_SERVICE_KEY",
     "DATA_GO_SERVICE_KEY",
     "DATAGOKR_SERVICE_KEY",
 )
@@ -103,7 +102,6 @@ class KasiClient:
         name: str = "KASI_SERVICE_KEY",
         *,
         fallback_names: tuple[str, ...] = (
-            "TRIPMATE_DATA_GO_SERVICE_KEY",
             "DATA_GO_SERVICE_KEY",
             "DATAGOKR_SERVICE_KEY",
         ),

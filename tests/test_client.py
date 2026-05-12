@@ -214,8 +214,9 @@ def test_raw_endpoint_and_iter_pages(fake_client_factory) -> None:
 
 def test_from_env_and_validation(monkeypatch, fake_client_factory) -> None:
     monkeypatch.delenv("KASI_SERVICE_KEY", raising=False)
-    monkeypatch.delenv("TRIPMATE_DATA_GO_SERVICE_KEY", raising=False)
-    monkeypatch.setenv("TRIPMATE_DATA_GO_SERVICE_KEY", "ENV_KEY")
+    monkeypatch.delenv("DATA_GO_SERVICE_KEY", raising=False)
+    monkeypatch.delenv("DATAGOKR_SERVICE_KEY", raising=False)
+    monkeypatch.setenv("DATA_GO_SERVICE_KEY", "ENV_KEY")
 
     client = KasiClient.from_env(session=fake_client_factory(FakeResponse(kasi_payload([])))[1])
     assert client.service_key == "ENV_KEY"

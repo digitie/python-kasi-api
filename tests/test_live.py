@@ -6,20 +6,19 @@ import pytest
 
 from kasi import KasiClient
 
-from .conftest import load_tripmate_env
+LIVE_KEY_ENV_NAMES = ("KASI_SERVICE_KEY", "DATA_GO_SERVICE_KEY", "DATAGOKR_SERVICE_KEY")
 
 
 def _live_client() -> KasiClient:
-    load_tripmate_env()
     if os.getenv("KASI_LIVE") != "1":
         pytest.skip("set KASI_LIVE=1 to run live KASI data.go.kr tests")
-    if not any(os.getenv(name) for name in ("KASI_SERVICE_KEY", "TRIPMATE_DATA_GO_SERVICE_KEY")):
-        pytest.skip("KASI_SERVICE_KEY or TRIPMATE_DATA_GO_SERVICE_KEY is not set")
+    if not any(os.getenv(name) for name in LIVE_KEY_ENV_NAMES):
+        pytest.skip("KASI_SERVICE_KEY, DATA_GO_SERVICE_KEY, or DATAGOKR_SERVICE_KEY is not set")
     return KasiClient.from_env(timeout=15, retries=1)
 
 
 @pytest.mark.live
-def test_live_holidays_from_tripmate_key() -> None:
+def test_live_holidays_from_env_key() -> None:
     client = _live_client()
 
     page = client.holidays(sol_year=2026, sol_month=5, num_of_rows=20)

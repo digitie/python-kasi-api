@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -67,16 +65,3 @@ def fake_client_factory():
 
     return factory
 
-
-def load_tripmate_env() -> None:
-    for env_file in (
-        Path(r"F:\dev\mapplan\.env"),
-        Path(r"F:\dev\mapplan\apps\api\.env"),
-    ):
-        if not env_file.exists():
-            continue
-        for line in env_file.read_text(encoding="utf-8-sig").splitlines():
-            if not line or line.lstrip().startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
