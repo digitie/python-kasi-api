@@ -14,10 +14,12 @@ class FakeResponse:
         *,
         text: str | None = None,
         status_code: int = 200,
+        headers: dict[str, str] | None = None,
     ) -> None:
         self.payload = payload
         self.text = text if text is not None else ""
         self.status_code = status_code
+        self.headers = headers or {}
 
     def json(self) -> Any:
         if self.payload is None:

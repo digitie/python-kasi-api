@@ -6,11 +6,13 @@ import os
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime
+from pathlib import Path
 from typing import Any, TypeVar
 
 from ._convert import (
     dn_yn_value,
     leap_month_value,
+    normalize_service_key,
     sanitize_request_params,
     to_day,
     to_int_or_none,
@@ -20,6 +22,7 @@ from ._convert import (
     without_none,
 )
 from ._http import DEFAULT_BASE_URL, KasiHttp, SessionLike, public_request_params
+from .debug import DebugRun, build_debug_run
 from .exceptions import KasiParseError
 from .models import (
     AstroEvent,
@@ -47,6 +50,7 @@ DEFAULT_ENV_NAMES = (
     "DATA_GO_SERVICE_KEY",
     "DATAGOKR_SERVICE_KEY",
 )
+DEFAULT_DOTENV_NAMES = (".env", ".env.local")
 
 SPCDE_SERVICE = "SpcdeInfoService"
 LRSR_CLD_SERVICE = "LrsrCldInfoService"
@@ -72,8 +76,12 @@ class KasiClient:
         retries: int = 3,
         session: SessionLike | None = None,
         response_format: str | None = "json",
+        dotenv_path: str | os.PathLike[str] | None = None,
     ) -> None:
-        key = service_key or _first_env(DEFAULT_ENV_NAMES)
+        key = normalize_service_key(service_key) or _first_env(
+            DEFAULT_ENV_NAMES,
+            dotenv_path=dotenv_path,
+        )
         if not key:
             names = ", ".join(DEFAULT_ENV_NAMES)
             from .exceptions import KasiAuthError
@@ -105,14 +113,22 @@ class KasiClient:
             "DATA_GO_SERVICE_KEY",
             "DATAGOKR_SERVICE_KEY",
         ),
+        dotenv_path: str | os.PathLike[str] | None = None,
         **kwargs: Any,
     ) -> KasiClient:
         from .exceptions import KasiAuthError
 
-        service_key = os.getenv(name) or _first_env(fallback_names)
+        service_key = _first_env(
+            (name, *fallback_names),
+            dotenv_path=dotenv_path,
+        )
         if not service_key:
             names = ", ".join((name, *fallback_names))
-            raise KasiAuthError(f"none of these environment variables are set: {names}")
+            env_files = ", ".join(DEFAULT_DOTENV_NAMES)
+            raise KasiAuthError(
+                f"none of these environment variables are set: {names}; "
+                f"also checked local {env_files}"
+            )
         return cls(service_key=service_key, **kwargs)
 
     def request(
@@ -131,6 +147,59 @@ class KasiClient:
             without_none(dict(params or {})),
             response_format=self._resolve_format(response_format),
         )
+
+    def debug(self, function_name: str, /, *args: Any, **kwargs: Any) -> DebugRun:
+        """public helper를 실행하고 fixture 저장용 DebugRun을 반환합니다."""
+
+        return build_debug_run(self, function_name=function_name, args=args, kwargs=kwargs)
+
+    def debug_holidays(self, *args: Any, **kwargs: Any) -> DebugRun:
+        return self.debug("holidays", *args, **kwargs)
+
+    def debug_national_holidays(self, *args: Any, **kwargs: Any) -> DebugRun:
+        return self.debug("national_holidays", *args, **kwargs)
+
+    def debug_anniversaries(self, *args: Any, **kwargs: Any) -> DebugRun:
+        return self.debug("anniversaries", *args, **kwargs)
+
+    def debug_solar_terms_24(self, *args: Any, **kwargs: Any) -> DebugRun:
+        return self.debug("solar_terms_24", *args, **kwargs)
+
+    def debug_sundry_days(self, *args: Any, **kwargs: Any) -> DebugRun:
+        return self.debug("sundry_days", *args, **kwargs)
+
+    def debug_solar_to_lunar(self, *args: Any, **kwargs: Any) -> DebugRun:
+        return self.debug("solar_to_lunar", *args, **kwargs)
+
+    def debug_lunar_to_solar(self, *args: Any, **kwargs: Any) -> DebugRun:
+        return self.debug("lunar_to_solar", *args, **kwargs)
+
+    def debug_specific_lunar(self, *args: Any, **kwargs: Any) -> DebugRun:
+        return self.debug("specific_lunar", *args, **kwargs)
+
+    def debug_julian_day(self, *args: Any, **kwargs: Any) -> DebugRun:
+        return self.debug("julian_day", *args, **kwargs)
+
+    def debug_area_rise_set(self, *args: Any, **kwargs: Any) -> DebugRun:
+        return self.debug("area_rise_set", *args, **kwargs)
+
+    def debug_location_rise_set(self, *args: Any, **kwargs: Any) -> DebugRun:
+        return self.debug("location_rise_set", *args, **kwargs)
+
+    def debug_area_solar_altitude(self, *args: Any, **kwargs: Any) -> DebugRun:
+        return self.debug("area_solar_altitude", *args, **kwargs)
+
+    def debug_location_solar_altitude(self, *args: Any, **kwargs: Any) -> DebugRun:
+        return self.debug("location_solar_altitude", *args, **kwargs)
+
+    def debug_moon_phase(self, *args: Any, **kwargs: Any) -> DebugRun:
+        return self.debug("moon_phase", *args, **kwargs)
+
+    def debug_astro_events(self, *args: Any, **kwargs: Any) -> DebugRun:
+        return self.debug("astro_events", *args, **kwargs)
+
+    def debug_sundays(self, *args: Any, **kwargs: Any) -> DebugRun:
+        return self.debug("sundays", *args, **kwargs)
 
     def raw_endpoint(
         self,
@@ -304,7 +373,8 @@ class KasiClient:
         response_format: str | None = None,
     ) -> Page[T]:
         fmt = self._resolve_format(response_format)
-        body = self._http.get(service_name, operation, params, response_format=fmt)
+        http_result = self._http.get_result(service_name, operation, params, response_format=fmt)
+        body = http_result.body
         rows = _extract_items(body, operation, service_name=service_name)
         try:
             parsed = tuple(parser(row) for row in rows)
@@ -328,7 +398,11 @@ class KasiClient:
             context=KasiCallContext(
                 service_name=service_name,
                 endpoint=operation,
+                request_method=_text_or_none(http_result.request.get("method")),
+                request_url=_text_or_none(http_result.request.get("url")),
                 request_params=sanitize_request_params(public_params),
+                response_status_code=to_int_or_none(http_result.response.get("status_code")),
+                response_headers=_mapping_or_empty(http_result.response.get("headers")),
                 collected_at=collected_now(),
             ),
         )
@@ -559,12 +633,56 @@ class SolarAltitudeNamespace:
         )
 
 
-def _first_env(names: tuple[str, ...]) -> str | None:
+def _first_env(
+    names: tuple[str, ...],
+    *,
+    dotenv_path: str | os.PathLike[str] | None = None,
+) -> str | None:
     for name in names:
-        value = os.getenv(name)
+        value = normalize_service_key(os.getenv(name))
+        if value:
+            return value
+    dotenv_values = _read_dotenv(dotenv_path)
+    for name in names:
+        value = normalize_service_key(dotenv_values.get(name))
         if value:
             return value
     return None
+
+
+def _read_dotenv(dotenv_path: str | os.PathLike[str] | None) -> dict[str, str]:
+    paths = (
+        (Path(dotenv_path),)
+        if dotenv_path is not None
+        else tuple(Path.cwd() / name for name in DEFAULT_DOTENV_NAMES)
+    )
+    values: dict[str, str] = {}
+    for path in paths:
+        if not path.is_file():
+            continue
+        for raw_line in path.read_text(encoding="utf-8").splitlines():
+            parsed = _parse_dotenv_line(raw_line)
+            if parsed is None:
+                continue
+            key, value = parsed
+            values[key] = value
+    return values
+
+
+def _parse_dotenv_line(line: str) -> tuple[str, str] | None:
+    text = line.strip()
+    if not text or text.startswith("#") or "=" not in text:
+        return None
+    key, value = text.split("=", 1)
+    key = key.strip()
+    if key.startswith("export "):
+        key = key[7:].strip()
+    if not key:
+        return None
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        value = value[1:-1]
+    return key, value
 
 
 def _page_params(*, page_no: int | None, num_of_rows: int | None) -> dict[str, int]:
@@ -624,3 +742,16 @@ def _extract_items(
         failure_kind="parse",
         response=body,
     )
+
+
+def _text_or_none(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _mapping_or_empty(value: Any) -> Mapping[str, Any]:
+    if isinstance(value, Mapping):
+        return value
+    return {}

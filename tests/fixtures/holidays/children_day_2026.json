@@ -1,0 +1,72 @@
+{
+  "name": "children_day_2026",
+  "function": "holidays",
+  "description": "2026년 5월 어린이날 정상 응답 replay fixture",
+  "input": {
+    "sol_year": 2026,
+    "sol_month": 5
+  },
+  "request": {
+    "method": "GET",
+    "url": "https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo",
+    "query": {
+      "_type": "json",
+      "solYear": "2026",
+      "solMonth": "05",
+      "pageNo": 1,
+      "numOfRows": 10
+    }
+  },
+  "response": {
+    "status_code": 200,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "items": {
+        "item": {
+          "dateKind": "01",
+          "dateName": "Children's Day",
+          "isHoliday": "Y",
+          "locdate": "20260505",
+          "seq": "1"
+        }
+      },
+      "pageNo": 1,
+      "numOfRows": 10,
+      "totalCount": 1
+    }
+  },
+  "parsed": {},
+  "processed": {
+    "items": [
+      {
+        "locdate": "20260505",
+        "seq": 1,
+        "date_kind": "01",
+        "is_holiday": true,
+        "date_name": "Children's Day",
+        "raw": {
+          "dateKind": "01",
+          "dateName": "Children's Day",
+          "isHoliday": "Y",
+          "locdate": "20260505",
+          "seq": "1"
+        }
+      }
+    ],
+    "page_no": 1,
+    "num_of_rows": 10,
+    "total_count": 1
+  },
+  "assertion": {
+    "mode": "snapshot",
+    "exclude_fields": [],
+    "required_fields": []
+  },
+  "meta": {
+    "created_at": "2026-05-15T20:30:00+09:00",
+    "library_version": "0.1.0",
+    "source": "debug_ui"
+  }
+}

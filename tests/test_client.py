@@ -230,3 +230,23 @@ def test_from_env_and_validation(monkeypatch, fake_client_factory) -> None:
             latitude=37.56,
             dn_yn="maybe",
         )
+
+
+def test_service_key_copy_paste_whitespace_is_removed(monkeypatch) -> None:
+    monkeypatch.setenv("KASI_SERVICE_KEY", "  ABCD\r\n EFGH\t ")
+
+    client = KasiClient.from_env()
+
+    assert client.service_key == "ABCDEFGH"
+
+
+def test_service_key_loads_from_local_dotenv_by_default(monkeypatch, tmp_path) -> None:
+    monkeypatch.delenv("KASI_SERVICE_KEY", raising=False)
+    monkeypatch.delenv("DATA_GO_SERVICE_KEY", raising=False)
+    monkeypatch.delenv("DATAGOKR_SERVICE_KEY", raising=False)
+    monkeypatch.chdir(tmp_path)
+    tmp_path.joinpath(".env").write_text("KASI_SERVICE_KEY=' LOCAL\\n KEY '\n", encoding="utf-8")
+
+    client = KasiClient.from_env()
+
+    assert client.service_key == "LOCALKEY"

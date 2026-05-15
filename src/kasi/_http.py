@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any, Protocol, cast
 from xml.etree import ElementTree
 
@@ -10,7 +11,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from ._convert import sanitize_request_params, without_none
+from ._convert import normalize_service_key, sanitize_request_params, without_none
 from .exceptions import (
     KasiAuthError,
     KasiParseError,
@@ -22,6 +23,15 @@ from .exceptions import (
 DEFAULT_BASE_URL = "https://apis.data.go.kr/B090041/openapi/service"
 DEFAULT_USER_AGENT = "python-kasi-api/0.1 (+https://github.com/digitie/python-kasi-api)"
 TRANSIENT_STATUSES = {429, 500, 502, 503, 504}
+
+
+@dataclass(frozen=True, slots=True)
+class KasiHttpResult:
+    """정규화된 응답 body와 디버그용 HTTP metadata."""
+
+    body: Mapping[str, Any]
+    request: dict[str, Any]
+    response: dict[str, Any]
 
 
 class ResponseLike(Protocol):
@@ -75,11 +85,12 @@ class KasiHttp:
         timeout: float = 10.0,
         retries: int = 3,
     ) -> None:
-        if not service_key:
+        normalized_key = normalize_service_key(service_key)
+        if not normalized_key:
             raise KasiAuthError("service_key is required", failure_kind="auth")
         if not service_key_param:
             raise ValueError("service_key_param must not be empty")
-        self.service_key = service_key
+        self.service_key = normalized_key
         self.base_url = base_url.rstrip("/")
         self.service_key_param = service_key_param
         self.session = session or build_session(retries)
@@ -93,6 +104,25 @@ class KasiHttp:
         *,
         response_format: str | None = "json",
     ) -> Mapping[str, Any]:
+        """KASI operation을 호출하고 정규화된 body만 반환합니다."""
+
+        return self.get_result(
+            service_name,
+            operation,
+            params,
+            response_format=response_format,
+        ).body
+
+    def get_result(
+        self,
+        service_name: str,
+        operation: str,
+        params: Mapping[str, Any] | None = None,
+        *,
+        response_format: str | None = "json",
+    ) -> KasiHttpResult:
+        """KASI operation을 호출하고 replay fixture에 필요한 metadata를 함께 반환합니다."""
+
         service_path = service_name.strip("/")
         operation_path = operation.strip("/")
         endpoint = f"{service_path}/{operation_path}"
@@ -152,12 +182,25 @@ class KasiHttp:
             service_key=self.service_key,
             params=public_params,
         )
-        return _extract_body(
+        body = _extract_body(
             payload,
             service_name=service_path,
             endpoint=operation_path,
             status_code=response.status_code,
             params=public_params,
+        )
+        return KasiHttpResult(
+            body=body,
+            request={
+                "method": "GET",
+                "url": url,
+                "query": public_params,
+            },
+            response={
+                "status_code": response.status_code,
+                "headers": _response_headers(response),
+                "body": body,
+            },
         )
 
 
@@ -168,7 +211,10 @@ def kasi_request_params(
     params: Mapping[str, Any] | None = None,
     response_format: str | None = "json",
 ) -> dict[str, Any]:
-    request_params: dict[str, Any] = {service_key_param: service_key}
+    normalized_key = normalize_service_key(service_key)
+    if not normalized_key:
+        raise KasiAuthError("service_key is required", failure_kind="auth")
+    request_params: dict[str, Any] = {service_key_param: normalized_key}
     if response_format:
         fmt = response_format.lower()
         if fmt not in {"json", "xml"}:
@@ -360,6 +406,13 @@ def _element_to_obj(element: ElementTree.Element) -> Any:
 
 def _local_name(tag: str) -> str:
     return tag.rsplit("}", 1)[-1]
+
+
+def _response_headers(response: ResponseLike) -> dict[str, str]:
+    headers = getattr(response, "headers", {})
+    if not isinstance(headers, Mapping):
+        return {}
+    return {str(key): str(value) for key, value in headers.items()}
 
 
 def _extract_body(

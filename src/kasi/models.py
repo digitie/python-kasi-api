@@ -25,7 +25,11 @@ class KasiCallContext(KasiModel):
 
     service_name: str | None = None
     endpoint: str | None = None
+    request_method: str | None = None
+    request_url: str | None = None
     request_params: RawRecord = Field(default_factory=dict)
+    response_status_code: int | None = None
+    response_headers: RawRecord = Field(default_factory=dict)
     collected_at: datetime | None = None
 
 

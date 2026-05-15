@@ -33,6 +33,11 @@ $env:KASI_SERVICE_KEY="your_decoding_key"
 ```
 
 `KasiClient.from_env()`는 `KASI_SERVICE_KEY`를 먼저 보고, 이어서 `DATA_GO_SERVICE_KEY`, `DATAGOKR_SERVICE_KEY`를 확인합니다.
+실제 환경변수가 없으면 현재 작업 디렉터리의 `.env`, `.env.local`도 같은 이름으로 확인합니다. 복사/붙여넣기 과정에서 서비스키 앞뒤나 중간에 들어간 공백, 탭, 줄바꿈은 자동으로 제거합니다.
+
+```dotenv
+KASI_SERVICE_KEY=your_decoding_key
+```
 
 data.go.kr 활용승인은 API별로 분리되어 있습니다. 한 키가 일부 KASI 서비스는 호출하지만 다른 서비스에서 HTTP 403을 반환할 수 있습니다. 이 경우 해당 API를 data.go.kr에서 추가 활용신청하거나 이미 승인된 키를 사용해야 합니다. 클라이언트는 이 응답을 `KasiAuthError`로 매핑하며, 응답 context에는 인증키를 노출하지 않습니다.
 
@@ -61,6 +66,64 @@ page.items
 page.first
 page.total_count
 page.context.request_params  # 인증 파라미터는 제거됨
+```
+
+## 디버그 실행과 Fixture Replay
+
+`KasiClient`는 Web UI나 로컬 디버그 도구가 바로 사용할 수 있는 `DebugRun`을 반환합니다. 라이브러리 본체는 Streamlit에 의존하지 않고, UI는 wheel 또는 editable install된 `kasi`를 import해서 아래 결과만 표시하거나 저장하면 됩니다.
+
+```python
+from kasi import KasiClient
+
+client = KasiClient.from_env()
+run = client.debug_holidays(sol_year=2026, sol_month=5)
+
+run.input      # 사용자가 넣은 입력값
+run.request    # 인증키가 제거된 요청 method/url/query
+run.response   # status_code, headers, 정규화된 response body
+run.parsed     # Page[SpecialDay] 같은 Pydantic 결과
+run.processed  # fixture snapshot 비교용 안정 결과
+run.error      # 실패 시 type/message/metadata
+```
+
+의미 있는 실행 결과는 JSON fixture로 저장할 수 있습니다. `save_fixture()`는 `serviceKey`, `Authorization`, `api_key`, `access_token` 같은 민감 key를 저장 전에 마스킹하고, 같은 파일명은 기본적으로 덮어쓰지 않습니다.
+
+```python
+from kasi import save_fixture
+
+save_fixture(
+    base_dir="tests/fixtures",
+    function_name=run.function,
+    case_name="children_day_2026",
+    description="2026년 5월 어린이날 정상 응답",
+    input_data=run.input,
+    request_data=run.request,
+    response_data=run.response,
+    parsed_result=run.parsed,
+    processed_result=run.processed,
+)
+```
+
+저장된 fixture는 `tests/test_generated_fixtures.py`에서 자동으로 읽어 replay 방식으로 검증합니다. 이 테스트는 외부 API를 호출하지 않고, fixture의 `response.body`를 `kasi.parser.parse_function_response()`로 다시 파싱한 뒤 `kasi.processor.process_function_result()` 결과를 fixture의 `processed`와 비교합니다.
+
+지원 assertion mode는 `snapshot`, `schema_only`, `required_fields`이며, `count`는 간단한 결과 개수 비교용으로 사용할 수 있습니다.
+
+## API 카탈로그와 디버그 UI
+
+`api_catalog()`는 지원 API의 함수명, 사람이 읽기 좋은 데이터셋명, data.go.kr 데이터셋 ID, 서비스키 활용신청 링크, 서비스명, operation, 파라미터 metadata를 반환합니다.
+
+```python
+from kasi import api_catalog
+
+for entry in api_catalog():
+    print(entry.dataset_name, entry.function_name, entry.service_key_url)
+```
+
+Streamlit 디버그 UI는 라이브러리 본체와 분리된 `debug_ui/app.py`에 있습니다. 선택한 API의 Debug Trace 탭에는 카탈로그 항목과 서비스키 신청 링크가 함께 표시됩니다.
+
+```bash
+pip install -e ".[debug-ui]"
+streamlit run debug_ui/app.py
 ```
 
 ## Live Test

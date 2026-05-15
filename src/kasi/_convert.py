@@ -7,6 +7,16 @@ from datetime import date, datetime
 from typing import Any
 
 
+def normalize_service_key(value: Any) -> str | None:
+    """복사/붙여넣기로 섞인 공백 문자를 제거한 서비스 키를 반환합니다."""
+
+    if value is None:
+        return None
+    text = str(value).replace("\\r", "").replace("\\n", "").replace("\\t", "")
+    normalized = "".join(text.split())
+    return normalized or None
+
+
 def strip_or_none(value: Any) -> str | None:
     if value is None:
         return None

@@ -32,6 +32,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+debug-ui = [
+  "streamlit>=1.36",
+]
 dev = [
   "pytest>=8",
   "pytest-cov>=6",

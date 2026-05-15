@@ -20,8 +20,10 @@
 - Python import 패키지명은 `kasi`입니다.
 - 기본 서버는 `https://apis.data.go.kr/B090041/openapi/service`입니다.
 - 인증 파라미터는 기본적으로 `serviceKey`입니다. 문서나 게이트웨이가 다른 대소문자를 요구하면 `service_key_param`으로 조정합니다.
+- 서비스키는 명시 인자, 환경변수, 로컬 `.env`/`.env.local` 순서로 찾으며 복사/붙여넣기 중 섞인 공백 문자를 제거합니다.
 - 기본 응답 형식은 `_type=json`이지만, XML 응답도 같은 `Page[T]` 형태로 정규화해야 합니다.
 - 기본 테스트는 실제 네트워크를 호출하지 않습니다. 실제 API 검증은 `@pytest.mark.live`와 `KASI_LIVE=1`로 분리합니다.
+- Web UI 연동은 라이브러리 본체에 Streamlit을 넣지 않고, `DebugRun`과 JSON fixture 저장/replay 구조로 지원합니다.
 - Python 지원 기준은 3.10 이상입니다.
 - 런타임 의존성은 `requests`, `pydantic`, `python-kraddr-base`입니다.
 
@@ -37,11 +39,15 @@
 - `AGENTS.md`: 작업 라우팅, 모듈 소유권, 반복 실수 방지 규칙.
 - `pyproject.toml`: 패키징, 의존성, lint, test, mypy 설정.
 - `src/kasi/client.py`: 사용자용 `KasiClient`, endpoint namespace, `Page[T]` 조립.
+- `src/kasi/catalog.py`: 함수별 API 카탈로그, 데이터셋명, data.go.kr 활용신청 링크.
 - `src/kasi/_http.py`: HTTP 호출, retry, JSON/XML envelope 정규화, 오류 매핑.
 - `src/kasi/_convert.py`: 요청 파라미터와 응답 필드 변환 helper.
+- `src/kasi/debug.py`: `DebugRun`, JSON 직렬화, 민감정보 마스킹, fixture 저장 helper.
+- `src/kasi/parser.py`: 저장된 raw response body를 함수별 `Page[T]`로 replay 파싱.
+- `src/kasi/processor.py`: fixture assertion에 사용할 안정적인 processed 결과 생성.
 - `src/kasi/models.py`: public Pydantic 응답 모델과 row parser.
 - `src/kasi/exceptions.py`: 예외 계층.
-- `tests/`: 네트워크 없는 단위 테스트와 opt-in live test.
+- `tests/`: 네트워크 없는 단위 테스트, `tests/fixtures/**/*.json` replay test, opt-in live test.
 
 ## 문서 작성 규칙
 
@@ -68,6 +74,9 @@
 - 선행 0이 의미 있는 날짜, 월, 일, 코드 값은 함부로 `int`로 바꾸지 않습니다.
 - 사용자에게 반환하는 안정 필드는 Pydantic 모델로 타입화하고, 원문 응답은 `raw`에 보존합니다.
 - 요청 context나 예외 metadata에는 인증키를 포함하지 않습니다.
+- `.env` 파일을 읽더라도 값을 출력하지 않고, 테스트 fixture나 문서에 실제 키를 남기지 않습니다.
+- fixture 저장 전 `input`, `request`, `response`, `parsed`, `processed`에 민감정보 마스킹을 적용합니다.
+- fixture replay 테스트는 저장된 `response.body`만 사용하고 실제 API를 호출하지 않습니다.
 
 ## 작업 소유권
 
@@ -125,6 +134,30 @@
 - live test는 `KASI_LIVE=1`과 서비스 키가 있을 때만 실행합니다.
 - live test 키는 환경변수로만 주입하고 파일에 쓰지 않습니다.
 - 실제 API별 활용승인 문제로 403이 날 수 있는 endpoint는 기본 live smoke 범위에 무리하게 넣지 않습니다.
+
+### 디버그와 fixture replay
+
+담당 파일:
+
+- `src/kasi/debug.py`
+- `src/kasi/catalog.py`
+- `src/kasi/parser.py`
+- `src/kasi/processor.py`
+- `debug_ui/app.py`
+- `tests/runners.py`
+- `tests/utils.py`
+- `tests/test_generated_fixtures.py`
+- `tests/fixtures/`
+
+확인할 것:
+
+- `DebugRun`은 `input`, `request`, `response`, `parsed`, `processed`, `trace`, `error`를 분리해 보존합니다.
+- API 선택 UI에는 `api_catalog()`의 사람이 읽기 좋은 데이터셋명과 data.go.kr 활용신청 링크를 표시합니다.
+- `request.query`와 예외 metadata에는 인증키가 남지 않아야 합니다.
+- fixture 저장기는 같은 파일명을 기본적으로 덮어쓰지 않습니다.
+- fixture JSON의 `response.body`는 replay parser가 다시 처리할 수 있는 정규화 body 형태여야 합니다.
+- `snapshot`, `schema_only`, `required_fields` assertion mode는 기본 테스트에서 네트워크 없이 동작해야 합니다.
+- Streamlit UI나 별도 디버그 앱은 이 패키지를 import해서 사용하되, 이 패키지의 runtime dependency로 Streamlit을 추가하지 않습니다.
 
 ## 검증
 
