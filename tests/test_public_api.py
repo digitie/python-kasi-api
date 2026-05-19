@@ -7,6 +7,10 @@ def test_public_imports() -> None:
     exported = set(kasi.__all__)
 
     assert "KasiClient" in exported
+    assert "KasiConfig" in exported
+    assert "AsyncKasiClient" in exported
+    assert "PROVIDER_NAME" in exported
+    assert "__version__" in exported
     assert "DebugRun" in exported
     assert "Page" in exported
     assert "SpecialDay" in exported

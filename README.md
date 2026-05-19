@@ -2,7 +2,7 @@
 
 `python-kasi-api`는 공공데이터포털(data.go.kr)의 한국천문연구원 OpenAPI를 Python에서 쓰기 위한 비공식 클라이언트입니다. Python 코드에서는 `kasi` 이름으로 import합니다.
 
-작은 `requests` transport, 타입화된 Pydantic 응답 모델, fake session 단위 테스트, opt-in live test를 기본 구조로 둡니다. 공통 한국 주소·위치 기반 타입은 `python-kraddr-base` 의존성을 기준으로 둡니다.
+`httpx` 기반 비동기 transport, 동기/비동기 클라이언트, 타입화된 Pydantic 응답 모델, fake session 단위 테스트, opt-in live test를 기본 구조로 둡니다. 공통 한국 주소·위치 기반 타입은 `python-kraddr-base` 의존성을 기준으로 둡니다.
 
 ## 지원 API
 
@@ -32,7 +32,7 @@ data.go.kr decoding 서비스 키를 사용합니다.
 $env:KASI_SERVICE_KEY="your_decoding_key"
 ```
 
-`KasiClient.from_env()`는 `KASI_SERVICE_KEY`를 먼저 보고, 이어서 `DATA_GO_SERVICE_KEY`, `DATAGOKR_SERVICE_KEY`를 확인합니다.
+`KasiClient()`와 `KasiClient.from_env()`는 `KASI_SERVICE_KEY`를 먼저 보고, 이어서 `DATA_GO_SERVICE_KEY`, `DATAGOKR_SERVICE_KEY`를 확인합니다.
 실제 환경변수가 없으면 현재 작업 디렉터리의 `.env`, `.env.local`도 같은 이름으로 확인합니다. 복사/붙여넣기 과정에서 서비스키 앞뒤나 중간에 들어간 공백, 탭, 줄바꿈은 자동으로 제거합니다.
 
 ```dotenv
@@ -44,20 +44,24 @@ data.go.kr 활용승인은 API별로 분리되어 있습니다. 한 키가 일�
 ## 사용 예시
 
 ```python
-from kasi import KasiClient
+from kasi import KasiClient, PROVIDER_NAME
 
-client = KasiClient.from_env()
+print(PROVIDER_NAME)  # python-kasi-api
 
-holidays = client.holidays(sol_year=2026, sol_month=5)
-for day in holidays:
-    print(day.locdate, day.date_name, day.is_holiday)
+with KasiClient() as client:
+    print(client.config.base_url)
+    holidays = client.holidays(sol_year=2026, sol_month=5)
+    for day in holidays:
+        print(day.locdate, day.date_name, day.is_holiday)
 
-converted = client.solar_to_lunar(sol_year=2026, sol_month=5, sol_day=7)
-print(converted.first.lun_year, converted.first.lun_month, converted.first.lun_day)
+    converted = client.solar_to_lunar(sol_year=2026, sol_month=5, sol_day=7)
+    print(converted.first.lun_year, converted.first.lun_month, converted.first.lun_day)
 
-sun = client.area_rise_set(locdate="20260507", location="서울")
-print(sun.first.sunrise, sun.first.sunset)
+    sun = client.area_rise_set(locdate="20260507", location="서울")
+    print(sun.first.sunrise, sun.first.sunset)
 ```
+
+`python-krheritage-api`와 같은 형태로 명시 키를 넘길 때는 `api_key=`를 사용합니다. 기존 `service_key=`도 계속 지원합니다.
 
 목록형 응답은 모두 `Page[T]`를 반환합니다.
 
@@ -67,6 +71,18 @@ page.first
 page.total_count
 page.context.request_params  # 인증 파라미터는 제거됨
 ```
+
+비동기 코드에서는 `AsyncKasiClient` 또는 `KasiClient.aio()`를 사용합니다. 내부 HTTP 호출은 `httpx.AsyncClient` 기반이며, retry와 간단한 async token bucket rate limit을 적용합니다.
+
+```python
+from kasi import AsyncKasiClient
+
+async with AsyncKasiClient.from_env() as client:
+    page = await client.holidays(sol_year=2026, sol_month=5)
+    print(page.first)
+```
+
+동기 클라이언트에서 바로 비동기 클라이언트를 만들 때는 `KasiClient.aio(api_key=...)`를 사용할 수 있습니다.
 
 ## 디버그 실행과 Fixture Replay
 

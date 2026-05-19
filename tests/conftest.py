@@ -32,7 +32,7 @@ class FakeSession:
         self.responses = list(responses)
         self.calls: list[dict[str, Any]] = []
 
-    def get(self, url: str, *, params: dict[str, Any], timeout: float) -> FakeResponse:
+    async def get(self, url: str, *, params: dict[str, Any], timeout: float) -> FakeResponse:
         self.calls.append({"url": url, "params": params, "timeout": timeout})
         if not self.responses:
             raise AssertionError("no fake response queued")

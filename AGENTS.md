@@ -20,12 +20,14 @@
 - Python import 패키지명은 `kasi`입니다.
 - 기본 서버는 `https://apis.data.go.kr/B090041/openapi/service`입니다.
 - 인증 파라미터는 기본적으로 `serviceKey`입니다. 문서나 게이트웨이가 다른 대소문자를 요구하면 `service_key_param`으로 조정합니다.
-- 서비스키는 명시 인자, 환경변수, 로컬 `.env`/`.env.local` 순서로 찾으며 복사/붙여넣기 중 섞인 공백 문자를 제거합니다.
+- 서비스키는 `api_key`/`service_key` 명시 인자, 환경변수, 로컬 `.env`/`.env.local` 순서로 찾으며 복사/붙여넣기 중 섞인 공백 문자를 제거합니다.
+- public 사용 형태는 `python-krheritage-api`처럼 `PROVIDER_NAME`, `client.config`, context manager, `api_key=` 명명 인자를 우선 지원합니다.
+- 기본 HTTP transport는 `httpx.AsyncClient` 기반입니다. 동기 `KasiClient`는 비동기 transport를 실행하는 facade이고, async 코드에서는 `AsyncKasiClient`를 사용합니다.
 - 기본 응답 형식은 `_type=json`이지만, XML 응답도 같은 `Page[T]` 형태로 정규화해야 합니다.
 - 기본 테스트는 실제 네트워크를 호출하지 않습니다. 실제 API 검증은 `@pytest.mark.live`와 `KASI_LIVE=1`로 분리합니다.
 - Web UI 연동은 라이브러리 본체에 Streamlit을 넣지 않고, `DebugRun`과 JSON fixture 저장/replay 구조로 지원합니다.
 - Python 지원 기준은 3.10 이상입니다.
-- 런타임 의존성은 `requests`, `pydantic`, `python-kraddr-base`입니다.
+- 런타임 의존성은 `httpx`, `pydantic`, `python-kraddr-base`입니다.
 
 ## Provider API 사용 원칙
 
@@ -46,9 +48,9 @@
 - `README.md`: 사용자용 개요, 설치, 인증, 예제, live test 안내.
 - `AGENTS.md`: 작업 라우팅, 모듈 소유권, 반복 실수 방지 규칙.
 - `pyproject.toml`: 패키징, 의존성, lint, test, mypy 설정.
-- `src/kasi/client.py`: 사용자용 `KasiClient`, endpoint namespace, `Page[T]` 조립.
+- `src/kasi/client.py`: 사용자용 `KasiClient`, `AsyncKasiClient`, endpoint namespace, `Page[T]` 조립.
 - `src/kasi/catalog.py`: 함수별 API 카탈로그, 데이터셋명, data.go.kr 활용신청 링크.
-- `src/kasi/_http.py`: HTTP 호출, retry, JSON/XML envelope 정규화, 오류 매핑.
+- `src/kasi/_http.py`: httpx 기반 비동기 HTTP 호출, retry/rate limit, JSON/XML envelope 정규화, 오류 매핑.
 - `src/kasi/_convert.py`: 요청 파라미터와 응답 필드 변환 helper.
 - `src/kasi/debug.py`: `DebugRun`, JSON 직렬화, 민감정보 마스킹, fixture 저장 helper.
 - `src/kasi/parser.py`: 저장된 raw response body를 함수별 `Page[T]`로 replay 파싱.
@@ -98,6 +100,7 @@
 확인할 것:
 
 - public helper는 `Page[T]`를 반환합니다.
+- async public helper는 `await client.holidays(...)`처럼 같은 이름으로 `Page[T]`를 반환합니다.
 - 요청 파라미터 이름은 data.go.kr 명세의 wire name을 유지합니다.
 - `pageNo`, `numOfRows`가 필요한 endpoint와 필요 없는 endpoint를 구분합니다.
 - `iter_pages()`는 응답 pagination metadata를 기준으로 멈춥니다.

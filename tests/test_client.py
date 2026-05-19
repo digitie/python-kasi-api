@@ -4,9 +4,9 @@ from datetime import date
 
 import pytest
 
-from kasi import KasiClient, SpecialDay
+from kasi import AsyncKasiClient, KasiClient, SpecialDay
 
-from .conftest import FakeResponse, kasi_payload
+from .conftest import FakeResponse, FakeSession, kasi_payload
 
 
 def test_special_days_holidays_builds_request_and_model(fake_client_factory) -> None:
@@ -232,6 +232,24 @@ def test_from_env_and_validation(monkeypatch, fake_client_factory) -> None:
         )
 
 
+def test_client_accepts_krheritage_style_api_key_and_context_manager() -> None:
+    client = KasiClient(
+        api_key=" TEST_KEY ",
+        session=FakeSession(FakeResponse(kasi_payload([]))),
+        retries=0,
+    )
+
+    assert client.api_key == "TEST_KEY"
+    assert client.service_key == "TEST_KEY"
+    assert client.config.api_key == "TEST_KEY"
+    assert client.closed is False
+
+    with client as active:
+        assert active is client
+
+    assert client.closed is True
+
+
 def test_service_key_copy_paste_whitespace_is_removed(monkeypatch) -> None:
     monkeypatch.setenv("KASI_SERVICE_KEY", "  ABCD\r\n EFGH\t ")
 
@@ -250,3 +268,31 @@ def test_service_key_loads_from_local_dotenv_by_default(monkeypatch, tmp_path) -
     client = KasiClient.from_env()
 
     assert client.service_key == "LOCALKEY"
+
+
+@pytest.mark.asyncio
+async def test_async_client_holidays_builds_request_and_model() -> None:
+    session = FakeSession(
+        FakeResponse(
+            kasi_payload(
+                {
+                    "dateKind": "01",
+                    "dateName": "Children's Day",
+                    "isHoliday": "Y",
+                    "locdate": "20260505",
+                    "seq": "1",
+                }
+            ),
+            text='{"response":{}}',
+        )
+    )
+
+    async with AsyncKasiClient(api_key="TEST_KEY", session=session, retries=0) as client:
+        page = await client.holidays(sol_year=2026, sol_month=5)
+
+    assert session.calls[0]["url"].endswith("/SpcdeInfoService/getRestDeInfo")
+    assert session.calls[0]["params"]["solMonth"] == "05"
+    assert "serviceKey" not in page.context.request_params
+    assert page.first is not None
+    assert page.first.locdate == "20260505"
+    assert client.closed is True
