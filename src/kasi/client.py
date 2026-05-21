@@ -47,9 +47,7 @@ from .models import (
 )
 
 DEFAULT_ENV_NAMES = (
-    "KASI_SERVICE_KEY",
-    "DATA_GO_SERVICE_KEY",
-    "DATAGOKR_SERVICE_KEY",
+    "DATA_GO_KR_SERVICE_KEY",
 )
 DEFAULT_DOTENV_NAMES = (".env", ".env.local")
 
@@ -150,14 +148,11 @@ class KasiClient:
     @classmethod
     def from_env(
         cls,
-        name: str = "KASI_SERVICE_KEY",
+        name: str = "DATA_GO_KR_SERVICE_KEY",
         *,
         api_key: str | None = None,
         service_key: str | None = None,
-        fallback_names: tuple[str, ...] = (
-            "DATA_GO_SERVICE_KEY",
-            "DATAGOKR_SERVICE_KEY",
-        ),
+        fallback_names: tuple[str, ...] = (),
         dotenv_path: str | os.PathLike[str] | None = None,
         **kwargs: Any,
     ) -> KasiClient:
@@ -546,14 +541,11 @@ class AsyncKasiClient:
     @classmethod
     def from_env(
         cls,
-        name: str = "KASI_SERVICE_KEY",
+        name: str = "DATA_GO_KR_SERVICE_KEY",
         *,
         api_key: str | None = None,
         service_key: str | None = None,
-        fallback_names: tuple[str, ...] = (
-            "DATA_GO_SERVICE_KEY",
-            "DATAGOKR_SERVICE_KEY",
-        ),
+        fallback_names: tuple[str, ...] = (),
         dotenv_path: str | os.PathLike[str] | None = None,
         **kwargs: Any,
     ) -> AsyncKasiClient:

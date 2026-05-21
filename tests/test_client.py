@@ -213,10 +213,10 @@ def test_raw_endpoint_and_iter_pages(fake_client_factory) -> None:
 
 
 def test_from_env_and_validation(monkeypatch, fake_client_factory) -> None:
-    monkeypatch.delenv("KASI_SERVICE_KEY", raising=False)
-    monkeypatch.delenv("DATA_GO_SERVICE_KEY", raising=False)
-    monkeypatch.delenv("DATAGOKR_SERVICE_KEY", raising=False)
-    monkeypatch.setenv("DATA_GO_SERVICE_KEY", "ENV_KEY")
+    monkeypatch.delenv("DATA_GO_KR_SERVICE_KEY", raising=False)
+    monkeypatch.delenv("DATA_GO_KR_SERVICE_KEY", raising=False)
+    monkeypatch.delenv("DATA_GO_KR_SERVICE_KEY", raising=False)
+    monkeypatch.setenv("DATA_GO_KR_SERVICE_KEY", "ENV_KEY")
 
     client = KasiClient.from_env(session=fake_client_factory(FakeResponse(kasi_payload([])))[1])
     assert client.service_key == "ENV_KEY"
@@ -251,7 +251,7 @@ def test_client_accepts_krheritage_style_api_key_and_context_manager() -> None:
 
 
 def test_service_key_copy_paste_whitespace_is_removed(monkeypatch) -> None:
-    monkeypatch.setenv("KASI_SERVICE_KEY", "  ABCD\r\n EFGH\t ")
+    monkeypatch.setenv("DATA_GO_KR_SERVICE_KEY", "  ABCD\r\n EFGH\t ")
 
     client = KasiClient.from_env()
 
@@ -259,11 +259,11 @@ def test_service_key_copy_paste_whitespace_is_removed(monkeypatch) -> None:
 
 
 def test_service_key_loads_from_local_dotenv_by_default(monkeypatch, tmp_path) -> None:
-    monkeypatch.delenv("KASI_SERVICE_KEY", raising=False)
-    monkeypatch.delenv("DATA_GO_SERVICE_KEY", raising=False)
-    monkeypatch.delenv("DATAGOKR_SERVICE_KEY", raising=False)
+    monkeypatch.delenv("DATA_GO_KR_SERVICE_KEY", raising=False)
+    monkeypatch.delenv("DATA_GO_KR_SERVICE_KEY", raising=False)
+    monkeypatch.delenv("DATA_GO_KR_SERVICE_KEY", raising=False)
     monkeypatch.chdir(tmp_path)
-    tmp_path.joinpath(".env").write_text("KASI_SERVICE_KEY=' LOCAL\\n KEY '\n", encoding="utf-8")
+    tmp_path.joinpath(".env").write_text("DATA_GO_KR_SERVICE_KEY=' LOCAL\\n KEY '\n", encoding="utf-8")
 
     client = KasiClient.from_env()
 

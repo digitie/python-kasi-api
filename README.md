@@ -29,14 +29,14 @@ pip install -e ".[dev]"
 data.go.kr decoding 서비스 키를 사용합니다.
 
 ```powershell
-$env:KASI_SERVICE_KEY="your_decoding_key"
+$env:DATA_GO_KR_SERVICE_KEY="your_decoding_key"
 ```
 
-`KasiClient()`와 `KasiClient.from_env()`는 `KASI_SERVICE_KEY`를 먼저 보고, 이어서 `DATA_GO_SERVICE_KEY`, `DATAGOKR_SERVICE_KEY`를 확인합니다.
+`KasiClient()`와 `KasiClient.from_env()`는 `DATA_GO_KR_SERVICE_KEY`를 먼저 보고, 이어서 `DATA_GO_KR_SERVICE_KEY`를 확인합니다.
 실제 환경변수가 없으면 현재 작업 디렉터리의 `.env`, `.env.local`도 같은 이름으로 확인합니다. 복사/붙여넣기 과정에서 서비스키 앞뒤나 중간에 들어간 공백, 탭, 줄바꿈은 자동으로 제거합니다.
 
 ```dotenv
-KASI_SERVICE_KEY=your_decoding_key
+DATA_GO_KR_SERVICE_KEY=your_decoding_key
 ```
 
 data.go.kr 활용승인은 API별로 분리되어 있습니다. 한 키가 일부 KASI 서비스는 호출하지만 다른 서비스에서 HTTP 403을 반환할 수 있습니다. 이 경우 해당 API를 data.go.kr에서 추가 활용신청하거나 이미 승인된 키를 사용해야 합니다. 클라이언트는 이 응답을 `KasiAuthError`로 매핑하며, 응답 context에는 인증키를 노출하지 않습니다.
@@ -151,7 +151,7 @@ $env:KASI_LIVE="1"
 python -m pytest -m live -vv
 ```
 
-테스트는 `KASI_SERVICE_KEY`를 먼저 사용하고, 없으면 `DATA_GO_SERVICE_KEY`, `DATAGOKR_SERVICE_KEY`를 확인합니다.
+테스트는 `DATA_GO_KR_SERVICE_KEY`를 먼저 사용하고, 없으면 `DATA_GO_KR_SERVICE_KEY`를 확인합니다.
 
 ## 문서와 작업 규칙
 
