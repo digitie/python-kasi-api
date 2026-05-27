@@ -31,7 +31,7 @@
 - 기본 테스트는 실제 네트워크를 호출하지 않습니다. 실제 API 검증은 `@pytest.mark.live`와 `KASI_LIVE=1`로 분리합니다.
 - Web UI 연동은 라이브러리 본체에 Streamlit을 넣지 않고, `DebugRun`과 JSON fixture 저장/replay 구조로 지원합니다.
 - Python 지원 기준은 3.10 이상입니다.
-- 런타임 의존성은 `httpx`, `pydantic`, `python-kraddr-base`입니다.
+- 런타임 의존성은 `httpx`, `pydantic`입니다.
 
 ## Provider API 사용 원칙
 

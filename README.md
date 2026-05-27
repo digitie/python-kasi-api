@@ -2,7 +2,7 @@
 
 `python-kasi-api`는 공공데이터포털(data.go.kr)의 한국천문연구원 OpenAPI를 Python에서 쓰기 위한 비공식 클라이언트입니다. Python 코드에서는 `kasi` 이름으로 import합니다.
 
-`httpx` 기반 비동기 transport, 동기/비동기 클라이언트, 타입화된 Pydantic 응답 모델, fake session 단위 테스트, opt-in live test를 기본 구조로 둡니다. 공통 한국 주소·위치 기반 타입은 `python-kraddr-base` 의존성을 기준으로 둡니다.
+`httpx` 기반 비동기 transport, 동기/비동기 클라이언트, 타입화된 Pydantic 응답 모델, fake session 단위 테스트, opt-in live test를 기본 구조로 둡니다. 좌표와 지역명 입력은 외부 주소 모델 없이 API wire 값에 가까운 문자열·숫자 값으로 받습니다.
 
 ## 지원 API
 
