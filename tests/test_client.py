@@ -263,7 +263,10 @@ def test_service_key_loads_from_local_dotenv_by_default(monkeypatch, tmp_path) -
     monkeypatch.delenv("DATA_GO_KR_SERVICE_KEY", raising=False)
     monkeypatch.delenv("DATA_GO_KR_SERVICE_KEY", raising=False)
     monkeypatch.chdir(tmp_path)
-    tmp_path.joinpath(".env").write_text("DATA_GO_KR_SERVICE_KEY=' LOCAL\\n KEY '\n", encoding="utf-8")
+    tmp_path.joinpath(".env").write_text(
+        "DATA_GO_KR_SERVICE_KEY=' LOCAL\\n KEY '\n",
+        encoding="utf-8",
+    )
 
     client = KasiClient.from_env()
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import kasi
 
 
@@ -19,3 +21,10 @@ def test_public_imports() -> None:
     assert "api_catalog_rows" in exported
     assert "normalize_service_key" in exported
     assert "save_fixture" in exported
+
+
+def test_runtime_dependencies_do_not_include_external_address_base() -> None:
+    pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
+    removed_dependency = "python-" + "kr" + "addr-base"
+
+    assert removed_dependency not in pyproject
