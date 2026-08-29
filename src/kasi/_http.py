@@ -8,6 +8,7 @@ import time
 from collections.abc import Callable, Coroutine, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Protocol, TypeVar, cast
+from urllib.parse import quote, urlsplit
 from xml.etree import ElementTree
 
 import httpx
@@ -24,6 +25,8 @@ from .exceptions import (
 DEFAULT_BASE_URL = "https://apis.data.go.kr/B090041/openapi/service"
 DEFAULT_USER_AGENT = "python-kasi-api/0.1 (+https://github.com/digitie/python-kasi-api)"
 TRANSIENT_STATUSES = {429, 500, 502, 503, 504}
+ALLOWED_BASE_URL_HOSTS = {"apis.data.go.kr"}
+MAX_RESPONSE_BYTES = 10 * 1024 * 1024
 R = TypeVar("R")
 
 
@@ -88,6 +91,16 @@ class SessionLike(Protocol):
     ) -> ResponseLike: ...
 
 
+def _validate_base_url(base_url: str) -> str:
+    normalized = base_url.rstrip("/")
+    parsed = urlsplit(normalized)
+    if parsed.scheme != "https" or parsed.hostname not in ALLOWED_BASE_URL_HOSTS:
+        raise ValueError(
+            f"base_url must be https://{next(iter(ALLOWED_BASE_URL_HOSTS))} (got {base_url!r})"
+        )
+    return normalized
+
+
 def build_session(timeout: float = 10.0) -> SessionLike:
     """KASI 호출에 사용할 기본 httpx.AsyncClient를 만듭니다."""
 
@@ -124,7 +137,7 @@ class AsyncKasiHttp:
         if not service_key_param:
             raise ValueError("service_key_param must not be empty")
         self.service_key = normalized_key
-        self.base_url = base_url.rstrip("/")
+        self.base_url = _validate_base_url(base_url)
         self.service_key_param = service_key_param
         self.session = session or build_session(timeout=timeout)
         self._owns_session = session is None
@@ -187,7 +200,9 @@ class AsyncKasiHttp:
             params=params,
             response_format=response_format,
         )
-        public_params = sanitize_request_params(request_params)
+        public_params = sanitize_request_params(
+            request_params, extra_sensitive_keys={self.service_key_param}
+        )
         response = await self._request_with_retry(
             url,
             request_params=without_none(request_params),
@@ -195,6 +210,12 @@ class AsyncKasiHttp:
             endpoint=operation_path,
             service_key=self.service_key,
             public_params=public_params,
+        )
+        _check_response_size(
+            response,
+            service_name=service_path,
+            endpoint=operation_path,
+            params=public_params,
         )
         _raise_for_status(
             response,
@@ -249,7 +270,7 @@ class AsyncKasiHttp:
                     params=request_params,
                     timeout=self.timeout,
                 )
-            except httpx.TimeoutException as exc:
+            except httpx.TimeoutException:
                 if attempt < self.retries:
                     await asyncio.sleep(_backoff_seconds(attempt))
                     continue
@@ -260,8 +281,8 @@ class AsyncKasiHttp:
                     failure_kind="timeout",
                     retryable=True,
                     params=public_params,
-                ) from exc
-            except httpx.ConnectError as exc:
+                ) from None
+            except httpx.ConnectError:
                 if attempt < self.retries:
                     await asyncio.sleep(_backoff_seconds(attempt))
                     continue
@@ -272,7 +293,7 @@ class AsyncKasiHttp:
                     failure_kind="network",
                     retryable=True,
                     params=public_params,
-                ) from exc
+                ) from None
             except httpx.HTTPError as exc:
                 if attempt < self.retries:
                     await asyncio.sleep(_backoff_seconds(attempt))
@@ -284,10 +305,10 @@ class AsyncKasiHttp:
                     failure_kind="network",
                     retryable=True,
                     params=public_params,
-                ) from exc
+                ) from None
 
             if int(response.status_code) in TRANSIENT_STATUSES and attempt < self.retries:
-                await asyncio.sleep(_backoff_seconds(attempt))
+                await asyncio.sleep(_retry_delay_seconds(response, attempt))
                 continue
             return response
         raise AssertionError("unreachable")
@@ -428,6 +449,8 @@ def _raise_for_status(
     params: dict[str, Any],
 ) -> None:
     status = int(response.status_code)
+    if status < 400:
+        return
     text = _redact_secret(response.text, service_key)[:300]
     if status in {401, 403}:
         raise KasiAuthError(
@@ -596,6 +619,35 @@ def _response_headers(response: ResponseLike) -> dict[str, str]:
     return {str(key): str(value) for key, value in headers.items()}
 
 
+def _check_response_size(
+    response: ResponseLike,
+    *,
+    service_name: str,
+    endpoint: str,
+    params: dict[str, Any],
+) -> None:
+    headers = _response_headers(response)
+    content_length = next(
+        (value for key, value in headers.items() if key.lower() == "content-length"), None
+    )
+    if content_length is None:
+        return
+    try:
+        length = int(content_length)
+    except ValueError:
+        return
+    if length > MAX_RESPONSE_BYTES:
+        raise KasiParseError(
+            f"KASI response too large ({length} bytes)",
+            status_code=response.status_code,
+            service_name=service_name,
+            endpoint=endpoint,
+            failure_kind="parse",
+            retryable=False,
+            params=params,
+        )
+
+
 def _extract_body(
     payload: Mapping[str, Any],
     *,
@@ -639,7 +691,17 @@ def _extract_body(
     code = str(header.get("resultCode", "")).strip()
     message = str(header.get("resultMsg", "")).strip()
     body = response.get("body", {})
-    if code in {"00", "0000", "0", "NORMAL_CODE", ""}:
+    if not code:
+        raise KasiParseError(
+            "KASI response.header did not contain resultCode",
+            status_code=status_code,
+            service_name=service_name,
+            endpoint=endpoint,
+            failure_kind="parse",
+            response=payload,
+            params=params,
+        )
+    if code in {"00", "0000", "0", "NORMAL_CODE"}:
         if isinstance(body, Mapping):
             return body
         raise KasiParseError(
@@ -738,6 +800,27 @@ def _backoff_seconds(attempt: int) -> float:
     return float(min(0.3 * (2**attempt), 8.0))
 
 
+def _retry_delay_seconds(response: ResponseLike, attempt: int) -> float:
+    if int(response.status_code) == 429:
+        retry_after = _retry_after_seconds(response)
+        if retry_after is not None:
+            return retry_after
+    return _backoff_seconds(attempt)
+
+
+def _retry_after_seconds(response: ResponseLike) -> float | None:
+    headers = getattr(response, "headers", {})
+    if not isinstance(headers, Mapping):
+        return None
+    value = next((v for k, v in headers.items() if str(k).lower() == "retry-after"), None)
+    if value is None:
+        return None
+    try:
+        return max(0.0, float(value))
+    except (TypeError, ValueError):
+        return None
+
+
 def _run_sync(factory: Callable[[], Coroutine[Any, Any, R]]) -> R:
     try:
         asyncio.get_running_loop()
@@ -765,4 +848,8 @@ def _run_sync(factory: Callable[[], Coroutine[Any, Any, R]]) -> R:
 def _redact_secret(text: str, secret: str | None) -> str:
     if not secret:
         return text
-    return text.replace(secret, "[redacted]")
+    redacted = text.replace(secret, "[redacted]")
+    encoded = quote(secret, safe="")
+    if encoded != secret:
+        redacted = redacted.replace(encoded, "[redacted]")
+    return redacted

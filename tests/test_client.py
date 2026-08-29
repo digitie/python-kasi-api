@@ -163,7 +163,8 @@ def test_moon_phase_astro_events_and_sundays(fake_client_factory) -> None:
     assert sundays.first is not None
     assert sundays.first.locdate == "20260503"
     assert session.calls[2]["url"].endswith("/SolcWeekInfoService_v2/getWeekInfo_v2")
-    assert "pageNo" not in session.calls[2]["params"]
+    assert session.calls[2]["params"]["pageNo"] == 1
+    assert session.calls[2]["params"]["numOfRows"] == 10
 
 
 def test_raw_endpoint_and_iter_pages(fake_client_factory) -> None:

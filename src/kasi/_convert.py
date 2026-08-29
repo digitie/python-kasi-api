@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from datetime import date, datetime
+from collections.abc import Iterable, Mapping
+from datetime import date, datetime, timedelta, timezone, tzinfo
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 def normalize_service_key(value: Any) -> str | None:
@@ -30,7 +31,7 @@ def to_int_or_none(value: Any) -> int | None:
         return None
     try:
         return int(float(text))
-    except ValueError:
+    except (ValueError, OverflowError):
         return None
 
 
@@ -60,8 +61,17 @@ def without_none(params: Mapping[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in params.items() if value is not None}
 
 
+def _seoul_timezone() -> tzinfo:
+    try:
+        return ZoneInfo("Asia/Seoul")
+    except ZoneInfoNotFoundError:
+        return timezone(timedelta(hours=9))
+
+
 def to_yyyymmdd(value: str | int | date | datetime, *, field: str = "date") -> str:
     if isinstance(value, datetime):
+        if value.tzinfo is not None:
+            value = value.astimezone(_seoul_timezone())
         return value.strftime("%Y%m%d")
     if isinstance(value, date):
         return value.strftime("%Y%m%d")
@@ -122,6 +132,14 @@ def leap_month_value(value: bool | str) -> str:
     raise ValueError("leap_month must be bool, '평', or '윤'")
 
 
+def _decimal_degrees_flag(value: str | int | float) -> bool | None:
+    if isinstance(value, float):
+        return True
+    if isinstance(value, int):
+        return None
+    return "." in str(value)
+
+
 def dn_yn_value(
     dn_yn: bool | str | None,
     *,
@@ -129,8 +147,14 @@ def dn_yn_value(
     latitude: str | int | float,
 ) -> str:
     if dn_yn is None:
-        text = f"{longitude}{latitude}"
-        return "Y" if "." in text else "N"
+        lon_decimal = _decimal_degrees_flag(longitude)
+        lat_decimal = _decimal_degrees_flag(latitude)
+        if lon_decimal is None or lat_decimal is None or lon_decimal != lat_decimal:
+            raise ValueError(
+                "dn_yn must be specified explicitly for whole-number longitude/latitude "
+                "(the decimal-degree vs degree-minute format cannot be inferred)"
+            )
+        return "Y" if lon_decimal else "N"
     if isinstance(dn_yn, bool):
         return "Y" if dn_yn else "N"
     upper = str(dn_yn).strip().upper()
@@ -139,11 +163,18 @@ def dn_yn_value(
     raise ValueError("dn_yn must be 'Y', 'N', True, or False")
 
 
-def sanitize_request_params(params: Mapping[str, Any]) -> dict[str, Any]:
+def sanitize_request_params(
+    params: Mapping[str, Any],
+    *,
+    extra_sensitive_keys: Iterable[str] = (),
+) -> dict[str, Any]:
     """모델 context에 노출해도 안전한 요청 파라미터를 반환합니다."""
 
+    sensitive_keys = {"servicekey"} | {
+        str(key).replace("_", "").lower() for key in extra_sensitive_keys
+    }
     return {
         key: value
         for key, value in without_none(params).items()
-        if str(key).replace("_", "").lower() != "servicekey"
+        if str(key).replace("_", "").lower() not in sensitive_keys
     }

@@ -14,7 +14,6 @@ from ._convert import (
     dn_yn_value,
     leap_month_value,
     normalize_service_key,
-    sanitize_request_params,
     to_day,
     to_int_or_none,
     to_month,
@@ -309,9 +308,7 @@ class KasiClient:
                 break
             if max_items is not None and yielded_items >= max_items:
                 break
-            if page.next_page_no is None:
-                break
-            next_page = page.next_page_no
+            next_page += 1
 
     def holidays(self, *args: Any, **kwargs: Any) -> Page[SpecialDay]:
         return self.special_days.holidays(*args, **kwargs)
@@ -404,12 +401,15 @@ class KasiClient:
         *,
         sol_year: str | int,
         sol_month: str | int | None = None,
+        page_no: int | None = 1,
+        num_of_rows: int | None = 10,
         response_format: str | None = None,
     ) -> Page[WeekInfo]:
         params: dict[str, Any] = {
             "solYear": to_year(sol_year, field="sol_year"),
             "solMonth": to_month(sol_month, field="sol_month"),
         }
+        params.update(_page_params(page_no=page_no, num_of_rows=num_of_rows))
         return self._get_page(
             WEEK_INFO_SERVICE,
             "getWeekInfo_v2",
@@ -431,31 +431,37 @@ class KasiClient:
         http_result = self._http.get_result(service_name, operation, params, response_format=fmt)
         body = http_result.body
         rows = _extract_items(body, operation, service_name=service_name)
-        try:
-            parsed = tuple(parser(row) for row in rows)
-        except (TypeError, ValueError) as exc:
+        parsed_rows: list[T] = []
+        parse_error: Exception | None = None
+        for row in rows:
+            try:
+                parsed_rows.append(parser(row))
+            except (TypeError, ValueError) as exc:
+                parse_error = exc
+        if rows and not parsed_rows:
             raise KasiParseError(
-                f"{operation}: failed to parse item: {exc}",
+                f"{operation}: failed to parse item: {parse_error}",
                 service_name=service_name,
                 endpoint=operation,
                 failure_kind="parse",
                 response=rows,
-            ) from exc
+            ) from parse_error
+        parsed = tuple(parsed_rows)
         public_params = public_request_params(params=params, response_format=fmt)
         return Page(
             items=parsed,
-            page_no=to_int_or_none(body.get("pageNo")) or to_int_or_none(params.get("pageNo")),
+            page_no=to_int_or_none(params.get("pageNo")) or to_int_or_none(body.get("pageNo")),
             num_of_rows=(
-                to_int_or_none(body.get("numOfRows")) or to_int_or_none(params.get("numOfRows"))
+                to_int_or_none(params.get("numOfRows")) or to_int_or_none(body.get("numOfRows"))
             ),
-            total_count=to_int_or_none(body.get("totalCount")) or len(parsed),
+            total_count=to_int_or_none(body.get("totalCount")),
             raw=body,
             context=KasiCallContext(
                 service_name=service_name,
                 endpoint=operation,
                 request_method=_text_or_none(http_result.request.get("method")),
                 request_url=_text_or_none(http_result.request.get("url")),
-                request_params=sanitize_request_params(public_params),
+                request_params=public_params,
                 response_status_code=to_int_or_none(http_result.response.get("status_code")),
                 response_headers=_mapping_or_empty(http_result.response.get("headers")),
                 collected_at=collected_now(),
@@ -697,12 +703,15 @@ class AsyncKasiClient:
         *,
         sol_year: str | int,
         sol_month: str | int | None = None,
+        page_no: int | None = 1,
+        num_of_rows: int | None = 10,
         response_format: str | None = None,
     ) -> Page[WeekInfo]:
         params: dict[str, Any] = {
             "solYear": to_year(sol_year, field="sol_year"),
             "solMonth": to_month(sol_month, field="sol_month"),
         }
+        params.update(_page_params(page_no=page_no, num_of_rows=num_of_rows))
         return await self._get_page(
             WEEK_INFO_SERVICE,
             "getWeekInfo_v2",
@@ -729,31 +738,37 @@ class AsyncKasiClient:
         )
         body = http_result.body
         rows = _extract_items(body, operation, service_name=service_name)
-        try:
-            parsed = tuple(parser(row) for row in rows)
-        except (TypeError, ValueError) as exc:
+        parsed_rows: list[T] = []
+        parse_error: Exception | None = None
+        for row in rows:
+            try:
+                parsed_rows.append(parser(row))
+            except (TypeError, ValueError) as exc:
+                parse_error = exc
+        if rows and not parsed_rows:
             raise KasiParseError(
-                f"{operation}: failed to parse item: {exc}",
+                f"{operation}: failed to parse item: {parse_error}",
                 service_name=service_name,
                 endpoint=operation,
                 failure_kind="parse",
                 response=rows,
-            ) from exc
+            ) from parse_error
+        parsed = tuple(parsed_rows)
         public_params = public_request_params(params=params, response_format=fmt)
         return Page(
             items=parsed,
-            page_no=to_int_or_none(body.get("pageNo")) or to_int_or_none(params.get("pageNo")),
+            page_no=to_int_or_none(params.get("pageNo")) or to_int_or_none(body.get("pageNo")),
             num_of_rows=(
-                to_int_or_none(body.get("numOfRows")) or to_int_or_none(params.get("numOfRows"))
+                to_int_or_none(params.get("numOfRows")) or to_int_or_none(body.get("numOfRows"))
             ),
-            total_count=to_int_or_none(body.get("totalCount")) or len(parsed),
+            total_count=to_int_or_none(body.get("totalCount")),
             raw=body,
             context=KasiCallContext(
                 service_name=service_name,
                 endpoint=operation,
                 request_method=_text_or_none(http_result.request.get("method")),
                 request_url=_text_or_none(http_result.request.get("url")),
-                request_params=sanitize_request_params(public_params),
+                request_params=public_params,
                 response_status_code=to_int_or_none(http_result.response.get("status_code")),
                 response_headers=_mapping_or_empty(http_result.response.get("headers")),
                 collected_at=collected_now(),
@@ -1316,8 +1331,10 @@ def _extract_items(
         return ()
     if isinstance(item_data, Mapping):
         return (item_data,)
-    if isinstance(item_data, list) and all(isinstance(item, Mapping) for item in item_data):
-        return tuple(item_data)
+    if isinstance(item_data, list):
+        valid_items = tuple(item for item in item_data if isinstance(item, Mapping))
+        if valid_items:
+            return valid_items
     raise KasiParseError(
         f"{endpoint}: response.body.items.item was not an object or list",
         endpoint=endpoint,
