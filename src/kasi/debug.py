@@ -77,6 +77,8 @@ def build_debug_run(
 ) -> DebugRun:
     """KasiClient public helper를 실행하고 DebugRun으로 감쌉니다."""
 
+    from .parser import available_function_names
+
     call_kwargs = dict(kwargs or {})
     input_data = _input_data(args=args, kwargs=call_kwargs)
     trace = [f"함수 선택: {function_name}"]
@@ -84,7 +86,7 @@ def build_debug_run(
     if catalog:
         trace.append(f"데이터셋: {catalog['dataset_name']}")
         trace.append(f"서비스키 신청: {catalog['service_key_url']}")
-    if _blocked_function_name(function_name):
+    if function_name not in available_function_names():
         return _error_run(
             function_name=function_name,
             input_data=input_data,
@@ -230,10 +232,6 @@ def _input_data(*, args: tuple[Any, ...], kwargs: Mapping[str, Any]) -> dict[str
     if args:
         data["_args"] = list(args)
     return data
-
-
-def _blocked_function_name(function_name: str) -> bool:
-    return not function_name or function_name.startswith("_") or function_name.startswith("debug")
 
 
 def _request_from_page(page: Page[Any]) -> dict[str, Any]:

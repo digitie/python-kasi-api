@@ -87,7 +87,10 @@ class SpecialDay(KasiModel):
     def date(self) -> date | None:
         if not self.locdate or len(self.locdate) != 8 or not self.locdate.isdigit():
             return None
-        return date(int(self.locdate[:4]), int(self.locdate[4:6]), int(self.locdate[6:8]))
+        try:
+            return date(int(self.locdate[:4]), int(self.locdate[4:6]), int(self.locdate[6:8]))
+        except ValueError:
+            return None
 
 
 class LunarSolarDate(KasiModel):
@@ -206,7 +209,10 @@ class WeekInfo(KasiModel):
         locdate = self.locdate
         if not locdate:
             return None
-        return date(int(locdate[:4]), int(locdate[4:6]), int(locdate[6:8]))
+        try:
+            return date(int(locdate[:4]), int(locdate[4:6]), int(locdate[6:8]))
+        except ValueError:
+            return None
 
 
 def collected_now() -> datetime:
