@@ -32,6 +32,7 @@ dependencies = [
 
 [project.optional-dependencies]
 debug-ui = [
+  "pandas>=2",
   "streamlit>=1.36",
 ]
 dev = [

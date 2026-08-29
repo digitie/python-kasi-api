@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import traceback as _traceback
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass, is_dataclass
 from datetime import datetime, timedelta, timezone, tzinfo
@@ -281,13 +282,25 @@ def _error_run(
     )
 
 
-def _error_data(error: Exception) -> dict[str, Any]:
+def build_error(error: Exception) -> dict[str, Any]:
+    """예외를 디버그 UI/fixture가 쓰는 구조화 오류 dict로 변환합니다.
+
+    ``KasiClient`` 생성이나 그 밖의 UI 쪽 호출에서 예외가 나는 경우에도, Streamlit 파일에서
+    직접 오류 dict를 조립하지 않고 이 함수를 재사용해야 합니다(패키지 쪽에 위치해야 재사용·
+    테스트가 가능합니다).
+    """
+
     metadata = error.metadata if isinstance(error, KasiError) else {}
     return {
         "type": error.__class__.__name__,
         "message": str(error),
+        "traceback": "".join(_traceback.format_exception(type(error), error, error.__traceback__)),
         "metadata": redact_sensitive(metadata),
     }
+
+
+def _error_data(error: Exception) -> dict[str, Any]:
+    return build_error(error)
 
 
 def _catalog_data(function_name: str) -> dict[str, Any] | None:
@@ -324,6 +337,7 @@ __all__ = [
     "DebugRun",
     "SENSITIVE_KEYS",
     "build_debug_run",
+    "build_error",
     "jsonable",
     "redact_sensitive",
     "save_fixture",

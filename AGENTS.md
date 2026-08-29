@@ -92,8 +92,8 @@ URL, provider 원문처럼 그대로 보존해야 하는 값만 영어를 유지
 - `src/kasi/models.py`: public Pydantic 응답 모델과 row parser
 - `src/kasi/exceptions.py`: 예외 계층
 - `tests/`: 네트워크 없는 단위 테스트, `tests/fixtures/**/*.json` replay test, opt-in live test
-- `debug_ui/app.py`: 별도 Streamlit 앱 — 이 패키지를 wheel/editable install로 import해서만
-  사용합니다(라이브러리 본체와 분리)
+- `examples/streamlit_debug_ui.py`: 별도 Streamlit 앱 — 이 패키지를 wheel/editable install로
+  import해서만 사용합니다(라이브러리 본체와 분리)
 
 ## Test 기준
 
