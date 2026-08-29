@@ -5,7 +5,7 @@ from __future__ import annotations
 from ._convert import normalize_service_key
 from .catalog import ApiCatalogEntry, ApiParameter, api_catalog, api_catalog_rows
 from .client import AsyncKasiClient, KasiClient, KasiConfig
-from .debug import DebugRun, jsonable, redact_sensitive, save_fixture
+from .debug import DebugRun, build_error, jsonable, redact_sensitive, save_fixture
 from .exceptions import (
     KasiAuthError,
     KasiError,
@@ -57,6 +57,7 @@ __all__ = [
     "__version__",
     "api_catalog",
     "api_catalog_rows",
+    "build_error",
     "jsonable",
     "normalize_service_key",
     "redact_sensitive",

@@ -18,9 +18,9 @@
 ### 결정
 
 `KasiClient`가 `DebugRun`(입력/요청/응답/파싱 결과/오류를 분리 보존)을 반환하도록 하고,
-`debug_ui/app.py`의 Streamlit 앱은 이 패키지를 wheel/editable install로 import해서만 쓰게
-분리한다. Streamlit은 `pyproject.toml`의 `[project.optional-dependencies]`의 `debug-ui`
-extra에만 넣고, 기본 런타임 의존성(`httpx`, `pydantic`)에는 포함하지 않는다.
+`examples/streamlit_debug_ui.py`의 Streamlit 앱은 이 패키지를 wheel/editable install로
+import해서만 쓰게 분리한다. Streamlit은 `pyproject.toml`의 `[project.optional-dependencies]`의
+`debug-ui` extra에만 넣고, 기본 런타임 의존성(`httpx`, `pydantic`)에는 포함하지 않는다.
 
 ### 근거
 

@@ -19,7 +19,7 @@ API wire 값에 가까운 문자열·숫자 값으로 받습니다.
 | 비동기 클라이언트 | `AsyncKasiClient`, `KasiClient.aio()` | 같은 API 표면을 `async`/`await`로 호출, `httpx.AsyncClient` 기반 |
 | API 카탈로그 | `api_catalog()`, `api_catalog_rows()` | 함수별 데이터셋명, data.go.kr 활용신청 링크, 파라미터 metadata 조회 |
 | 디버그 실행과 fixture | `KasiClient.debug_*()`, `save_fixture()` | 요청/응답/파싱 결과를 캡처하고 JSON fixture로 저장·재생 검증 |
-| 디버그 웹 UI (optional) | `debug_ui/app.py` (`pip install -e ".[debug-ui]"`) | Streamlit 기반 API 탐색기, 라이브러리 본체와 분리된 별도 실행 진입점 |
+| 디버그 웹 UI (optional) | `examples/streamlit_debug_ui.py` (`pip install -e ".[debug-ui]"`) | Streamlit 기반 API 탐색기, 라이브러리 본체와 분리된 별도 실행 진입점 |
 
 ## 먼저 읽을 문서
 
@@ -118,7 +118,7 @@ run.request    # 인증키가 제거된 요청 method/url/query
 run.response   # status_code, headers, 정규화된 response body
 run.parsed     # Page[SpecialDay] 같은 Pydantic 결과
 run.processed  # fixture snapshot 비교용 안정 결과
-run.error      # 실패 시 type/message/metadata
+run.error      # 실패 시 type/message/traceback/metadata
 ```
 
 의미 있는 실행 결과는 JSON fixture로 저장할 수 있습니다. `save_fixture()`는 `serviceKey`,
@@ -161,12 +161,12 @@ for entry in api_catalog():
     print(entry.dataset_name, entry.function_name, entry.service_key_url)
 ```
 
-Streamlit 디버그 UI는 라이브러리 본체와 분리된 `debug_ui/app.py`에 있습니다. 선택한 API의
-Debug Trace 탭에는 카탈로그 항목과 서비스키 신청 링크가 함께 표시됩니다.
+Streamlit 디버그 UI는 라이브러리 본체와 분리된 `examples/streamlit_debug_ui.py`에 있습니다.
+선택한 API의 Debug Trace 탭에는 카탈로그 항목과 서비스키 신청 링크가 함께 표시됩니다.
 
 ```bash
 pip install -e ".[debug-ui]"
-streamlit run debug_ui/app.py
+streamlit run examples/streamlit_debug_ui.py
 ```
 
 ### Live Test
@@ -201,7 +201,7 @@ python -m mypy src/kasi
 |---|---|
 | `src/kasi/` | 라이브러리 소스 — `client.py`, `catalog.py`, `_http.py`, `models.py`, `debug.py`, `parser.py`, `processor.py` |
 | `tests/` | 네트워크 없는 단위 테스트, `tests/fixtures/**/*.json` replay test, opt-in live test |
-| `debug_ui/` | Streamlit 기반 디버그 웹 UI (optional, 라이브러리 본체와 분리) |
+| `examples/` | Streamlit 기반 디버그 웹 UI (optional, 라이브러리 본체와 분리) |
 | `docs/` | 설계 결정 기록(`decisions.md`) |
 
 ## 문서와 기여 규칙
