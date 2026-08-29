@@ -32,7 +32,7 @@ data.go.kr decoding 서비스 키를 사용합니다.
 $env:DATA_GO_KR_SERVICE_KEY="your_decoding_key"
 ```
 
-`KasiClient()`와 `KasiClient.from_env()`는 `DATA_GO_KR_SERVICE_KEY`를 먼저 보고, 이어서 `DATA_GO_KR_SERVICE_KEY`를 확인합니다.
+`KasiClient()`와 `KasiClient.from_env()`는 `DATA_GO_KR_SERVICE_KEY` 환경변수를 확인합니다.
 실제 환경변수가 없으면 현재 작업 디렉터리의 `.env`, `.env.local`도 같은 이름으로 확인합니다. 복사/붙여넣기 과정에서 서비스키 앞뒤나 중간에 들어간 공백, 탭, 줄바꿈은 자동으로 제거합니다.
 
 ```dotenv
@@ -151,7 +151,7 @@ $env:KASI_LIVE="1"
 python -m pytest -m live -vv
 ```
 
-테스트는 `DATA_GO_KR_SERVICE_KEY`를 먼저 사용하고, 없으면 `DATA_GO_KR_SERVICE_KEY`를 확인합니다.
+테스트는 `DATA_GO_KR_SERVICE_KEY` 환경변수를 사용합니다.
 
 ## 문서와 작업 규칙
 

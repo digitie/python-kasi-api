@@ -6,7 +6,7 @@ import pytest
 
 from kasi import AsyncKasiClient, KasiAuthError, KasiClient
 
-LIVE_KEY_ENV_NAMES = ("DATA_GO_KR_SERVICE_KEY", "DATA_GO_KR_SERVICE_KEY", "DATA_GO_KR_SERVICE_KEY")
+LIVE_KEY_ENV_NAMES = ("DATA_GO_KR_SERVICE_KEY",)
 
 
 def _live_client() -> KasiClient:
