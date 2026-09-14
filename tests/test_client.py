@@ -4,12 +4,12 @@ from datetime import date
 
 import pytest
 
-from kasi import AsyncKasiClient, KasiClient, SpecialDay
+from kasi import KasiClient, SpecialDay
 
 from .conftest import FakeResponse, FakeSession, kasi_payload
 
 
-def test_special_days_holidays_builds_request_and_model(fake_client_factory) -> None:
+async def test_special_days_holidays_builds_request_and_model(fake_client_factory) -> None:
     client, session = fake_client_factory(
         FakeResponse(
             kasi_payload(
@@ -25,7 +25,7 @@ def test_special_days_holidays_builds_request_and_model(fake_client_factory) -> 
         )
     )
 
-    page = client.holidays(sol_year=2026, sol_month=5)
+    page = await client.holidays(sol_year=2026, sol_month=5)
 
     assert session.calls[0]["url"].endswith("/SpcdeInfoService/getRestDeInfo")
     assert session.calls[0]["params"]["solYear"] == "2026"
@@ -41,7 +41,7 @@ def test_special_days_holidays_builds_request_and_model(fake_client_factory) -> 
     assert page.first.date == date(2026, 5, 5)
 
 
-def test_calendar_conversion_helpers(fake_client_factory) -> None:
+async def test_calendar_conversion_helpers(fake_client_factory) -> None:
     row = {
         "solYear": "2026",
         "solMonth": "05",
@@ -59,16 +59,16 @@ def test_calendar_conversion_helpers(fake_client_factory) -> None:
         FakeResponse(kasi_payload(row), text='{"response":{}}'),
     )
 
-    solar_to_lunar = client.solar_to_lunar(sol_year=2026, sol_month=5, sol_day=7)
-    lunar_to_solar = client.lunar_to_solar(lun_year=2026, lun_month=3, lun_day=21)
-    specific = client.specific_lunar(
+    solar_to_lunar = await client.solar_to_lunar(sol_year=2026, sol_month=5, sol_day=7)
+    lunar_to_solar = await client.lunar_to_solar(lun_year=2026, lun_month=3, lun_day=21)
+    specific = await client.specific_lunar(
         from_sol_year=2026,
         to_sol_year=2027,
         lun_month=1,
         lun_day=1,
         leap_month=False,
     )
-    julian = client.julian_day(2461168)
+    julian = await client.julian_day(2461168)
 
     assert solar_to_lunar.first is not None
     assert solar_to_lunar.first.solar_date == date(2026, 5, 7)
@@ -83,7 +83,7 @@ def test_calendar_conversion_helpers(fake_client_factory) -> None:
     assert session.calls[3]["params"]["solJd"] == "2461168"
 
 
-def test_rise_set_and_solar_altitude_helpers(fake_client_factory) -> None:
+async def test_rise_set_and_solar_altitude_helpers(fake_client_factory) -> None:
     rise_row = {
         "locdate": "20260507",
         "location": "서울",
@@ -107,10 +107,10 @@ def test_rise_set_and_solar_altitude_helpers(fake_client_factory) -> None:
         FakeResponse(kasi_payload(altitude_row), text='{"response":{}}'),
     )
 
-    area = client.area_rise_set(locdate=date(2026, 5, 7), location="서울")
-    location = client.location_rise_set(locdate="20260507", longitude=126.98, latitude=37.56)
-    altitude_area = client.area_solar_altitude(locdate="2026-05-07", location="서울")
-    altitude_location = client.location_solar_altitude(
+    area = await client.area_rise_set(locdate=date(2026, 5, 7), location="서울")
+    location = await client.location_rise_set(locdate="20260507", longitude=126.98, latitude=37.56)
+    altitude_area = await client.area_solar_altitude(locdate="2026-05-07", location="서울")
+    altitude_location = await client.location_solar_altitude(
         locdate=20260507,
         longitude="12659",
         latitude="3734",
@@ -126,12 +126,10 @@ def test_rise_set_and_solar_altitude_helpers(fake_client_factory) -> None:
     assert session.calls[3]["params"]["dnYn"] == "N"
 
 
-def test_moon_phase_astro_events_and_sundays(fake_client_factory) -> None:
+async def test_moon_phase_astro_events_and_sundays(fake_client_factory) -> None:
     client, session = fake_client_factory(
         FakeResponse(
-            kasi_payload(
-                {"solYear": "2026", "solMonth": "05", "solDay": "07", "lunAge": "20.1"}
-            ),
+            kasi_payload({"solYear": "2026", "solMonth": "05", "solDay": "07", "lunAge": "20.1"}),
             text='{"response":{}}',
         ),
         FakeResponse(
@@ -152,9 +150,9 @@ def test_moon_phase_astro_events_and_sundays(fake_client_factory) -> None:
         ),
     )
 
-    moon = client.moon_phase(sol_year=2026, sol_month=5, sol_day=7)
-    events = client.astro_events(sol_year=2026, sol_month=5)
-    sundays = client.sundays(sol_year=2026, sol_month=5)
+    moon = await client.moon_phase(sol_year=2026, sol_month=5, sol_day=7)
+    events = await client.astro_events(sol_year=2026, sol_month=5)
+    sundays = await client.sundays(sol_year=2026, sol_month=5)
 
     assert moon.first is not None
     assert moon.first.lun_age == 20.1
@@ -167,7 +165,7 @@ def test_moon_phase_astro_events_and_sundays(fake_client_factory) -> None:
     assert session.calls[2]["params"]["numOfRows"] == 10
 
 
-def test_raw_endpoint_and_iter_pages(fake_client_factory) -> None:
+async def test_raw_endpoint_and_iter_pages(fake_client_factory) -> None:
     client, _session = fake_client_factory(
         FakeResponse(
             {
@@ -199,21 +197,22 @@ def test_raw_endpoint_and_iter_pages(fake_client_factory) -> None:
         ),
     )
 
-    pages = list(
-        client.iter_pages(
+    pages = [
+        item
+        async for item in client.iter_pages(
             client.raw_endpoint,
             "S",
             "O",
             num_of_rows=1,
             max_pages=2,
         )
-    )
+    ]
 
     assert [page.page_no for page in pages] == [1, 2]
     assert [item["id"] for page in pages for item in page.items] == ["1", "2"]
 
 
-def test_from_env_and_validation(monkeypatch, fake_client_factory) -> None:
+async def test_from_env_and_validation(monkeypatch, fake_client_factory) -> None:
     monkeypatch.delenv("DATA_GO_KR_SERVICE_KEY", raising=False)
     monkeypatch.delenv("DATA_GO_KR_SERVICE_KEY", raising=False)
     monkeypatch.delenv("DATA_GO_KR_SERVICE_KEY", raising=False)
@@ -223,17 +222,19 @@ def test_from_env_and_validation(monkeypatch, fake_client_factory) -> None:
     assert client.service_key == "ENV_KEY"
 
     with pytest.raises(ValueError, match="sol_month"):
-        client.holidays(sol_year=2026, sol_month=13)
+        (await client.holidays(sol_year=2026, sol_month=13))
     with pytest.raises(ValueError, match="dn_yn"):
-        client.location_rise_set(
-            locdate="20260507",
-            longitude=126.98,
-            latitude=37.56,
-            dn_yn="maybe",
+        (
+            await client.location_rise_set(
+                locdate="20260507",
+                longitude=126.98,
+                latitude=37.56,
+                dn_yn="maybe",
+            )
         )
 
 
-def test_client_accepts_krheritage_style_api_key_and_context_manager() -> None:
+async def test_client_accepts_krheritage_style_api_key_and_context_manager() -> None:
     client = KasiClient(
         api_key=" TEST_KEY ",
         session=FakeSession(FakeResponse(kasi_payload([]))),
@@ -245,7 +246,7 @@ def test_client_accepts_krheritage_style_api_key_and_context_manager() -> None:
     assert client.config.api_key == "TEST_KEY"
     assert client.closed is False
 
-    with client as active:
+    async with client as active:
         assert active is client
 
     assert client.closed is True
@@ -291,7 +292,7 @@ async def test_async_client_holidays_builds_request_and_model() -> None:
         )
     )
 
-    async with AsyncKasiClient(api_key="TEST_KEY", session=session, retries=0) as client:
+    async with KasiClient(api_key="TEST_KEY", session=session, retries=0) as client:
         page = await client.holidays(sol_year=2026, sol_month=5)
 
     assert session.calls[0]["url"].endswith("/SpcdeInfoService/getRestDeInfo")

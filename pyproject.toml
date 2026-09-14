@@ -67,8 +67,9 @@ strict = true
 warn_unused_ignores = true
 
 [tool.pytest.ini_options]
+asyncio_mode = "auto"
 testpaths = ["tests"]
-addopts = "-ra"
+addopts = "-ra -m 'not live'"
 pythonpath = ["src"]
 markers = [
   "live: tests that call real data.go.kr KASI APIs and require KASI_LIVE=1 plus a service key",

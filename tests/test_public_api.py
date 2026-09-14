@@ -10,7 +10,8 @@ def test_public_imports() -> None:
 
     assert "KasiClient" in exported
     assert "KasiConfig" in exported
-    assert "AsyncKasiClient" in exported
+    assert "AsyncTokenBucket" in exported
+    assert not hasattr(kasi, "AsyncKasiClient")
     assert "PROVIDER_NAME" in exported
     assert "__version__" in exported
     assert "DebugRun" in exported

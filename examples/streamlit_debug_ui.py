@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import os
 import sys
 from datetime import date
@@ -165,7 +167,13 @@ def _raw_response_tab(
     st.json(jsonable(run.response))
 
 
-def _execute(
+def _execute(selected: ApiCatalogEntry, params: dict[str, Any], *, manual_key: str,
+             environment: str, timeout: float) -> DebugRun:
+    return asyncio.run(_execute_async(selected, params, manual_key=manual_key,
+                                     environment=environment, timeout=timeout))
+
+
+async def _execute_async(
     selected: ApiCatalogEntry,
     params: dict[str, Any],
     *,
@@ -184,7 +192,7 @@ def _execute(
         else:
             client = KasiClient(service_key=normalize_service_key(manual_key), timeout=timeout)
             trace.append("수동 입력 serviceKey로 클라이언트 생성")
-        return client.debug(selected.function_name, **params)
+        return await client.debug(selected.function_name, **params)
     except Exception as exc:
         trace.append(f"실행 실패: {exc.__class__.__name__}")
         return DebugRun(
@@ -200,7 +208,7 @@ def _execute(
         )
     finally:
         if client is not None:
-            client.close()
+            await client.aclose()
 
 
 def _request_form(selected: ApiCatalogEntry) -> tuple[bool, dict[str, Any], list[str]]:

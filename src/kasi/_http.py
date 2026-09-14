@@ -3,19 +3,21 @@
 from __future__ import annotations
 
 import asyncio
-import threading
-import time
-from collections.abc import Callable, Coroutine, Mapping
-from dataclasses import dataclass, field
-from typing import Any, Protocol, TypeVar, cast
+import inspect
+from collections.abc import Mapping
+from dataclasses import dataclass
+from typing import Any, Protocol, cast
 from urllib.parse import quote, urlsplit
 from xml.etree import ElementTree
 
 import httpx
 
 from ._convert import normalize_service_key, sanitize_request_params, without_none
+from ._httpx import send_after_token
+from ._ratelimit import AsyncTokenBucket
 from .exceptions import (
     KasiAuthError,
+    KasiError,
     KasiParseError,
     KasiRateLimitError,
     KasiRequestError,
@@ -27,7 +29,6 @@ DEFAULT_USER_AGENT = "python-kasi-api/0.1 (+https://github.com/digitie/python-ka
 TRANSIENT_STATUSES = {429, 500, 502, 503, 504}
 ALLOWED_BASE_URL_HOSTS = {"apis.data.go.kr"}
 MAX_RESPONSE_BYTES = 10 * 1024 * 1024
-R = TypeVar("R")
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,39 +40,6 @@ class KasiHttpResult:
     response: dict[str, Any]
 
 
-@dataclass(slots=True)
-class AsyncTokenBucket:
-    """동시 비동기 호출에서 초당 요청량을 완만하게 제한합니다."""
-
-    max_rps: float = 5.0
-    capacity: float | None = None
-    _tokens: float = field(init=False)
-    _updated_at: float = field(init=False)
-    _lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False)
-
-    def __post_init__(self) -> None:
-        if self.max_rps <= 0:
-            raise ValueError("max_rps must be greater than 0")
-        self.capacity = self.capacity or self.max_rps
-        self._tokens = self.capacity
-        self._updated_at = time.monotonic()
-
-    async def acquire(self) -> None:
-        while True:
-            async with self._lock:
-                self._refill()
-                if self._tokens >= 1:
-                    self._tokens -= 1
-                    return
-                wait_for = (1 - self._tokens) / self.max_rps
-            await asyncio.sleep(wait_for)
-
-    def _refill(self) -> None:
-        now = time.monotonic()
-        elapsed = now - self._updated_at
-        self._updated_at = now
-        assert self.capacity is not None
-        self._tokens = min(self.capacity, self._tokens + elapsed * self.max_rps)
 
 
 class ResponseLike(Protocol):
@@ -117,7 +85,7 @@ def build_session(timeout: float = 10.0) -> SessionLike:
     )
 
 
-class AsyncKasiHttp:
+class KasiHttp:
     """KASI 서비스를 호출하는 비동기 data.go.kr transport."""
 
     def __init__(
@@ -130,6 +98,7 @@ class AsyncKasiHttp:
         timeout: float = 10.0,
         retries: int = 3,
         max_rps: float = 5.0,
+        rate_limiter: AsyncTokenBucket | None = None,
     ) -> None:
         normalized_key = normalize_service_key(service_key)
         if not normalized_key:
@@ -139,13 +108,16 @@ class AsyncKasiHttp:
         self.service_key = normalized_key
         self.base_url = _validate_base_url(base_url)
         self.service_key_param = service_key_param
-        self.session = session or build_session(timeout=timeout)
+        self._bucket = rate_limiter if rate_limiter is not None else AsyncTokenBucket(max_rps)
+        if session is not None and not inspect.iscoroutinefunction(session.get):
+            raise TypeError("session.get must be async")
+        self.session = session if session is not None else build_session(timeout=timeout)
+        self._closed = False
         self._owns_session = session is None
         self.timeout = timeout
         self.retries = max(0, retries)
-        self._bucket = AsyncTokenBucket(max_rps=max_rps)
 
-    async def __aenter__(self) -> AsyncKasiHttp:
+    async def __aenter__(self) -> KasiHttp:
         return self
 
     async def __aexit__(
@@ -160,6 +132,7 @@ class AsyncKasiHttp:
         close = getattr(self.session, "aclose", None)
         if self._owns_session and callable(close):
             await close()
+        self._closed = True
 
     async def get(
         self,
@@ -190,6 +163,8 @@ class AsyncKasiHttp:
     ) -> KasiHttpResult:
         """KASI operation을 호출하고 replay fixture에 필요한 metadata를 함께 반환합니다."""
 
+        if self._closed:
+            raise RuntimeError("KasiClient is closed")
         service_path = service_name.strip("/")
         operation_path = operation.strip("/")
         endpoint = f"{service_path}/{operation_path}"
@@ -231,13 +206,19 @@ class AsyncKasiHttp:
             service_key=self.service_key,
             params=public_params,
         )
-        body = _extract_body(
-            payload,
-            service_name=service_path,
-            endpoint=operation_path,
-            status_code=response.status_code,
-            params=public_params,
-        )
+        try:
+            body = _extract_body(
+                payload,
+                service_name=service_path,
+                endpoint=operation_path,
+                status_code=response.status_code,
+                params=public_params,
+            )
+        except KasiError as exc:
+            # 원문으로 분류한 뒤 외부에 반환할 오류 메시지와 본문만 마스킹한다.
+            exc.args = (_redact_secret(str(exc), self.service_key),)
+            exc.response = _redact_response(exc.response, self.service_key)
+            raise
         return KasiHttpResult(
             body=body,
             request={
@@ -265,11 +246,15 @@ class AsyncKasiHttp:
         for attempt in range(self.retries + 1):
             await self._bucket.acquire()
             try:
-                response = await self.session.get(
-                    url,
-                    params=request_params,
-                    timeout=self.timeout,
-                )
+                if isinstance(self.session, httpx.AsyncClient):
+                    request = self.session.build_request(
+                        "GET", url, params=request_params, timeout=self.timeout
+                    )
+                    response = await send_after_token(self.session, request, self._bucket)
+                else:
+                    response = await self.session.get(
+                        url, params=request_params, timeout=self.timeout
+                    )
             except httpx.TimeoutException:
                 if attempt < self.retries:
                     await asyncio.sleep(_backoff_seconds(attempt))
@@ -314,96 +299,6 @@ class AsyncKasiHttp:
         raise AssertionError("unreachable")
 
 
-class KasiHttp:
-    """동기 코드에서 AsyncKasiHttp를 사용할 수 있게 하는 얇은 sync facade."""
-
-    def __init__(
-        self,
-        service_key: str,
-        *,
-        base_url: str = DEFAULT_BASE_URL,
-        service_key_param: str = "serviceKey",
-        session: SessionLike | None = None,
-        timeout: float = 10.0,
-        retries: int = 3,
-        max_rps: float = 5.0,
-    ) -> None:
-        self.service_key = service_key
-        self.base_url = base_url
-        self.service_key_param = service_key_param
-        self.session = session
-        self.timeout = timeout
-        self.retries = retries
-        self.max_rps = max_rps
-
-    def get(
-        self,
-        service_name: str,
-        operation: str,
-        params: Mapping[str, Any] | None = None,
-        *,
-        response_format: str | None = "json",
-    ) -> Mapping[str, Any]:
-        """KASI operation을 호출하고 정규화된 body만 반환합니다."""
-
-        return self.get_result(
-            service_name,
-            operation,
-            params,
-            response_format=response_format,
-        ).body
-
-    def get_result(
-        self,
-        service_name: str,
-        operation: str,
-        params: Mapping[str, Any] | None = None,
-        *,
-        response_format: str | None = "json",
-    ) -> KasiHttpResult:
-        """동기 호출자를 위해 비동기 transport 실행 결과를 반환합니다."""
-
-        return _run_sync(
-            lambda: self._get_result_once(
-                service_name,
-                operation,
-                params,
-                response_format=response_format,
-            )
-        )
-
-    def close(self) -> None:
-        """동기 facade는 요청마다 AsyncKasiHttp를 생성하므로 닫을 보유 자원이 없습니다."""
-
-        return None
-
-    async def _get_result_once(
-        self,
-        service_name: str,
-        operation: str,
-        params: Mapping[str, Any] | None = None,
-        *,
-        response_format: str | None = "json",
-    ) -> KasiHttpResult:
-        http = AsyncKasiHttp(
-            self.service_key,
-            base_url=self.base_url,
-            service_key_param=self.service_key_param,
-            session=self.session,
-            timeout=self.timeout,
-            retries=self.retries,
-            max_rps=self.max_rps,
-        )
-        try:
-            return await http.get_result(
-                service_name,
-                operation,
-                params,
-                response_format=response_format,
-            )
-        finally:
-            if self.session is None:
-                await http.aclose()
 
 
 def kasi_request_params(
@@ -821,28 +716,17 @@ def _retry_after_seconds(response: ResponseLike) -> float | None:
         return None
 
 
-def _run_sync(factory: Callable[[], Coroutine[Any, Any, R]]) -> R:
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(factory())
 
-    result: R | None = None
-    error: BaseException | None = None
 
-    def runner() -> None:
-        nonlocal result, error
-        try:
-            result = asyncio.run(factory())
-        except BaseException as exc:  # pragma: no cover - 방어적 thread bridge
-            error = exc
-
-    thread = threading.Thread(target=runner, daemon=True)
-    thread.start()
-    thread.join()
-    if error is not None:
-        raise error
-    return cast(R, result)
+def _redact_response(value: Any, secret: str) -> Any:
+    if isinstance(value, str):
+        return _redact_secret(value, secret)
+    if isinstance(value, Mapping):
+        return {_redact_secret(str(key), secret): _redact_response(item, secret)
+                for key, item in value.items()}
+    if isinstance(value, list):
+        return [_redact_response(item, secret) for item in value]
+    return value
 
 
 def _redact_secret(text: str, secret: str | None) -> str:

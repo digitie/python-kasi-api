@@ -4,7 +4,7 @@
 
 `python-kasi-api`(GitHub/PyPI 저장소 이름 `python-kasi-api`, Python import 이름 `kasi`)는
 공공데이터포털(data.go.kr)이 제공하는 한국천문연구원(KASI) OpenAPI를 감싸는 타입 지정 Python
-클라이언트 라이브러리입니다. `KasiClient`/`AsyncKasiClient`가 특일·음양력·출몰시각·태양고도·
+클라이언트 라이브러리입니다. 비동기 전용 `KasiClient`가 특일·음양력·출몰시각·태양고도·
 월령·천문현상 조회를 typed `Page[T]`로 제공하며, downstream이 직접 소비할 수 있는 안정된
 public API를 목표로 합니다.
 
@@ -80,7 +80,7 @@ URL, provider 원문처럼 그대로 보존해야 하는 값만 영어를 유지
 
 ## Module ownership
 
-- `src/kasi/client.py`: 사용자용 `KasiClient`, `AsyncKasiClient`, endpoint namespace,
+- `src/kasi/client.py`: 사용자용 `KasiClient`, endpoint namespace,
   `Page[T]` 조립
 - `src/kasi/catalog.py`: 함수별 API 카탈로그, 데이터셋명, data.go.kr 활용신청 링크
 - `src/kasi/_http.py`: httpx 기반 비동기 HTTP 호출, retry/rate limit, JSON/XML envelope
