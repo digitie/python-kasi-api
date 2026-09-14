@@ -9,7 +9,7 @@ from kasi import save_fixture
 from .conftest import FakeResponse, kasi_payload
 
 
-def test_debug_holidays_returns_fixture_ready_run(fake_client_factory) -> None:
+async def test_debug_holidays_returns_fixture_ready_run(fake_client_factory) -> None:
     row = {
         "dateKind": "01",
         "dateName": "Children's Day",
@@ -25,7 +25,7 @@ def test_debug_holidays_returns_fixture_ready_run(fake_client_factory) -> None:
         )
     )
 
-    run = client.debug_holidays(sol_year=2026, sol_month=5)
+    run = (await client.debug_holidays(sol_year=2026, sol_month=5))
 
     assert run.error is None
     assert run.function == "holidays"
@@ -41,10 +41,10 @@ def test_debug_holidays_returns_fixture_ready_run(fake_client_factory) -> None:
     assert any("데이터셋:" in item for item in run.trace)
 
 
-def test_debug_returns_error_without_raising(fake_client_factory) -> None:
+async def test_debug_returns_error_without_raising(fake_client_factory) -> None:
     client, _session = fake_client_factory()
 
-    run = client.debug_holidays(sol_year=2026, sol_month=13)
+    run = (await client.debug_holidays(sol_year=2026, sol_month=13))
 
     assert run.error is not None
     assert run.error["type"] == "ValueError"
@@ -52,7 +52,7 @@ def test_debug_returns_error_without_raising(fake_client_factory) -> None:
     assert run.processed is None
 
 
-def test_save_fixture_redacts_sensitive_values(tmp_path, fake_client_factory) -> None:
+async def test_save_fixture_redacts_sensitive_values(tmp_path, fake_client_factory) -> None:
     row = {
         "dateKind": "01",
         "dateName": "Children's Day",
@@ -61,7 +61,7 @@ def test_save_fixture_redacts_sensitive_values(tmp_path, fake_client_factory) ->
         "seq": "1",
     }
     client, _session = fake_client_factory(FakeResponse(kasi_payload(row), text='{"response":{}}'))
-    run = client.debug_holidays(sol_year=2026, sol_month=5)
+    run = (await client.debug_holidays(sol_year=2026, sol_month=5))
 
     path = save_fixture(
         base_dir=tmp_path,

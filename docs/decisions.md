@@ -37,7 +37,7 @@ import해서만 쓰게 분리한다. Streamlit은 `pyproject.toml`의 `[project.
 
 ## D-002: 기본 HTTP transport를 `httpx.AsyncClient`로 두고, 동기 `KasiClient`는 그 위의 facade로 둔다
 
-- 상태: accepted
+- 상태: superseded by D-003
 - 날짜: 2026-05-19
 
 ### 컨텍스트
@@ -64,3 +64,14 @@ HTTP 호출 구현은 `httpx.AsyncClient` 기반 하나만 두고, `AsyncKasiCli
   이름의 메서드로 동일한 `Page[T]`를 반환한다.
 - 동기 API를 async 이벤트 루프 안에서 호출하면 안 된다는 제약이 새로 생겼고, 그 경우
   `AsyncKasiClient` 또는 `KasiClient.aio()`를 써야 한다.
+
+## D-003: 비동기 전용과 공통 TPS 버킷
+
+- 상태: accepted
+- 날짜: 2026-09-14
+- supersedes: D-002의 동기 facade
+
+사용자 요청으로 `KasiClient`를 native async 구현 하나로 통합한다. 기존 debug helper와
+페이지 순회도 비동기로 이식하고 메서드 이름·인자·모델·공급자 파라미터를 보존한다.
+요청마다 이벤트 루프/버킷을 새로 만들던 동기 실행을 제거한다. 공통 AsyncTokenBucket을
+사용해 클라이언트 전체와 여러 클라이언트 사이의 송신·재시도·redirect 예산을 공유한다.

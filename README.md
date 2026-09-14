@@ -5,7 +5,7 @@
 ![Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)
 
 `python-kasi-api`는 공공데이터포털(data.go.kr)의 한국천문연구원(KASI) OpenAPI를 위한 비공식
-Python 클라이언트입니다. Python 코드에서는 `kasi` 이름으로 import하며, `httpx` 기반 동기/비동기
+Python 클라이언트입니다. Python 코드에서는 `kasi` 이름으로 import하며, `httpx.AsyncClient` 기반 비동기 전용
 클라이언트와 타입화된 Pydantic 응답 모델을 제공합니다. 좌표와 지역명 입력은 별도 주소 모델 없이
 API wire 값에 가까운 문자열·숫자 값으로 받습니다.
 
@@ -15,8 +15,7 @@ API wire 값에 가까운 문자열·숫자 값으로 받습니다.
 
 | 표면 | 진입점 | 설명 |
 |---|---|---|
-| 동기 클라이언트 | `KasiClient` | 특일/음양력/출몰시각/태양고도/월령/천문현상 API를 동기 호출, context manager 지원 |
-| 비동기 클라이언트 | `AsyncKasiClient`, `KasiClient.aio()` | 같은 API 표면을 `async`/`await`로 호출, `httpx.AsyncClient` 기반 |
+| 비동기 클라이언트 | `KasiClient` | 특일/음양력/출몰시각/태양고도/월령/천문현상 API를 await로 호출, async context manager 지원 |
 | API 카탈로그 | `api_catalog()`, `api_catalog_rows()` | 함수별 데이터셋명, data.go.kr 활용신청 링크, 파라미터 metadata 조회 |
 | 디버그 실행과 fixture | `KasiClient.debug_*()`, `save_fixture()` | 요청/응답/파싱 결과를 캡처하고 JSON fixture로 저장·재생 검증 |
 | 디버그 웹 UI (optional) | `examples/streamlit_debug_ui.py` (`pip install -e ".[debug-ui]"`) | Streamlit 기반 API 탐색기, 라이브러리 본체와 분리된 별도 실행 진입점 |
@@ -62,8 +61,8 @@ context에는 인증키를 노출하지 않습니다.
 ```python
 from kasi import KasiClient
 
-with KasiClient() as client:
-    holidays = client.holidays(sol_year=2026, sol_month=5)
+async with KasiClient(max_rps=5) as client:
+    holidays = await client.holidays(sol_year=2026, sol_month=5)
     for day in holidays:
         print(day.locdate, day.date_name, day.is_holiday)
 ```
@@ -85,20 +84,19 @@ page.total_count
 page.context.request_params  # 인증 파라미터는 제거됨
 ```
 
-비동기 코드에서는 `AsyncKasiClient` 또는 `KasiClient.aio()`를 사용합니다. 내부 HTTP 호출은
-`httpx.AsyncClient` 기반이며, retry와 간단한 async token bucket rate limit을 적용합니다
-(설계 근거: [D-002](docs/decisions.md#d-002-기본-http-transport를-httpxasyncclient로-두고-동기-kasiclient는-그-위의-facade로-둔다)).
+아래 예제는 async 함수 안에서 실행합니다. 공개 조회·디버그는 await, 페이지 순회는
+async for, 종료는 `await client.aclose()`를 사용합니다. 공통 버킷의 기본 `max_rps`는 5이며
+설정과 공유 방법은 [docs/async-tps.md](docs/async-tps.md)에 있습니다.
 
 ```python
-from kasi import AsyncKasiClient
+from kasi import KasiClient
 
-async with AsyncKasiClient.from_env() as client:
+async with KasiClient.from_env() as client:
     page = await client.holidays(sol_year=2026, sol_month=5)
     print(page.first)
 ```
 
-동기 클라이언트에서 바로 비동기 클라이언트를 만들 때는 `KasiClient.aio(api_key=...)`를 사용할
-수 있습니다.
+기존 `AsyncKasiClient`/`KasiClient.aio()`는 제거하고 `KasiClient`로 통합했습니다.
 
 ### 디버그 실행과 Fixture Replay
 
@@ -110,8 +108,8 @@ import해서 아래 결과만 표시하거나 저장하면 됩니다(설계 근�
 ```python
 from kasi import KasiClient
 
-client = KasiClient.from_env()
-run = client.debug_holidays(sol_year=2026, sol_month=5)
+async with KasiClient.from_env() as client:
+    run = await client.debug_holidays(sol_year=2026, sol_month=5)
 
 run.input      # 사용자가 넣은 입력값
 run.request    # 인증키가 제거된 요청 method/url/query

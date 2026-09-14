@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from ._convert import normalize_service_key
+from ._ratelimit import AsyncTokenBucket
 from .catalog import ApiCatalogEntry, ApiParameter, api_catalog, api_catalog_rows
-from .client import AsyncKasiClient, KasiClient, KasiConfig
+from .client import KasiClient, KasiConfig
 from .debug import DebugRun, build_error, jsonable, redact_sensitive, save_fixture
 from .exceptions import (
     KasiAuthError,
@@ -33,7 +34,7 @@ PROVIDER_NAME = "python-kasi-api"
 __all__ = [
     "ApiCatalogEntry",
     "ApiParameter",
-    "AsyncKasiClient",
+    "AsyncTokenBucket",
     "AstroEvent",
     "DebugRun",
     "KasiAuthError",

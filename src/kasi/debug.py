@@ -69,7 +69,7 @@ class DebugRun:
         }
 
 
-def build_debug_run(
+async def build_debug_run(
     client: Any,
     *,
     function_name: str,
@@ -107,7 +107,7 @@ def build_debug_run(
         )
 
     try:
-        parsed = target(*args, **call_kwargs)
+        parsed = await target(*args, **call_kwargs)
         processed = process_function_result(function_name, parsed)
     except Exception as exc:
         trace.append(f"실패: {exc.__class__.__name__}")
