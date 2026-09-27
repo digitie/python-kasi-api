@@ -43,6 +43,8 @@ public API를 목표로 합니다.
 - API별 활용승인은 분리되어 있습니다. 한 키로 일부 KASI API만 성공하고 다른 API가 HTTP 403을
   반환해도 전체 키가 잘못됐다고 단정하지 말 것.
 - `items.item`은 단일 dict 또는 list일 수 있으므로 항상 정규화할 것.
+- `totalCount`의 누락·잘못된 타입을 행 수로 보정하지 말 것. 명시적 0은 그대로,
+  미확인은 `None`으로 보존하며 live 조회와 fixture replay가 같아야 한다.
 - 이 Windows 환경에서 `rg`가 권한 문제로 실패하면 `Get-ChildItem -Recurse -File`과
   `Select-String`으로 우회하고, 한글 문서를 읽을 때는 `Get-Content -Raw -Encoding UTF8`을
   사용할 것.

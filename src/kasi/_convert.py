@@ -35,6 +35,22 @@ def to_int_or_none(value: Any) -> int | None:
         return None
 
 
+def total_count_or_none(value: Any) -> int | None:
+    """응답 총건수는 보정하지 않는다. 누락·비정수·음수는 미확인으로 남긴다."""
+    if type(value) is int:
+        return value if 0 <= value <= 2**63 - 1 else None
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if not text or len(text) > 19 or not text.isascii() or not text.isdecimal():
+        return None
+    try:
+        count = int(text)
+        return count if count <= 2**63 - 1 else None
+    except ValueError:
+        return None
+
+
 def to_float_or_none(value: Any) -> float | None:
     text = strip_or_none(value)
     if text is None:

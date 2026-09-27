@@ -84,6 +84,12 @@ page.total_count
 page.context.request_params  # 인증 파라미터는 제거됨
 ```
 
+`total_count`는 제공기관이 명시한 0~2⁶³−1 범위의 정수만 반영한다. 누락·잘못된 숫자는
+`None`으로 남기며 현재 페이지의 행 수로 추정하지 않는다. 명시적인 `0`도 보존한다.
+실시간 조회와 fixture replay에 같은 규칙을 적용한다. 한 달의 공휴일을 전부 받았다고
+판단하려면 소비자가 `total_count is not None`과 실제 누적 항목 수의 일치를 확인해야 한다.
+미확인 총건수·누락된 페이지를 공휴일 없는 달로 해석하지 않는다.
+
 아래 예제는 async 함수 안에서 실행합니다. 공개 조회·디버그는 await, 페이지 순회는
 async for, 종료는 `await client.aclose()`를 사용합니다. 공통 버킷의 기본 `max_rps`는 5이며
 설정과 공유 방법은 [docs/async-tps.md](docs/async-tps.md)에 있습니다.
