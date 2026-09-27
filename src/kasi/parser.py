@@ -6,7 +6,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from ._convert import sanitize_request_params, to_int_or_none
+from ._convert import sanitize_request_params, to_int_or_none, total_count_or_none
 from .client import (
     ASTRO_EVENT_SERVICE,
     LRSR_CLD_SERVICE,
@@ -189,7 +189,7 @@ def parse_function_response(
         items=parsed,
         page_no=to_int_or_none(body.get("pageNo")),
         num_of_rows=to_int_or_none(body.get("numOfRows")),
-        total_count=to_int_or_none(body.get("totalCount")) or len(parsed),
+        total_count=total_count_or_none(body.get("totalCount")),
         raw=body,
         context=KasiCallContext(
             service_name=spec.service_name,

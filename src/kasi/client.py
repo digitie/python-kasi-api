@@ -18,6 +18,7 @@ from ._convert import (
     to_month,
     to_year,
     to_yyyymmdd,
+    total_count_or_none,
     without_none,
 )
 from ._http import DEFAULT_BASE_URL, KasiHttp, SessionLike, public_request_params
@@ -368,7 +369,7 @@ class KasiClient:
             num_of_rows=(
                 to_int_or_none(params.get("numOfRows")) or to_int_or_none(body.get("numOfRows"))
             ),
-            total_count=to_int_or_none(body.get("totalCount")),
+            total_count=total_count_or_none(body.get("totalCount")),
             raw=body,
             context=KasiCallContext(
                 service_name=service_name,
